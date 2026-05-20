@@ -1,0 +1,12 @@
+﻿node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+
+apps/web/node_modules/
+apps/server/node_modules/
+apps/bot/node_modules/
+
+apps/server/data/tasks.json
