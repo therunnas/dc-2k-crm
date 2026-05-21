@@ -1,12 +1,47 @@
-﻿node_modules/
+# Dependencies
+node_modules/
+*/node_modules/
+apps/*/node_modules/
+
+# Build
 dist/
+build/
+.vite/
+
+# Environment
 .env
-.env.local
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System
 .DS_Store
+Thumbs.db
+
+# Local data / uploads / temp
+uploads/
+tmp/
+temp/
+reports/
 *.log
 
-apps/web/node_modules/
-apps/server/node_modules/
-apps/bot/node_modules/
+# Server local data generated from imported spreadsheets
+apps/server/data/
+apps/server/uploads/
+apps/server/tmp/
 
-apps/server/data/tasks.json
+# Obsidian local vault / private notes
+obsidian-vault/
+
+# Backups
+*.backup.css
+apps/web/src/index.backup.css
+
+# Editor
+.vscode/
+.idea/

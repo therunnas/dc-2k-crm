@@ -1,0 +1,493 @@
+.discordops-page {
+  display: grid;
+  gap: 24px;
+  width: 100%;
+}
+
+.discordops-overline {
+  margin: 0 0 7px;
+  color: #8d9bd0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.discordops-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: 22px;
+  padding: 30px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top right, rgba(88, 101, 242, 0.2), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(34, 211, 238, 0.13), transparent 30%),
+    linear-gradient(180deg, rgba(13, 17, 32, 0.94), rgba(8, 11, 22, 0.9));
+  border: 1px solid rgba(255,255,255,0.075);
+  box-shadow: 0 26px 70px rgba(0,0,0,0.28);
+}
+
+.discordops-hero h1 {
+  margin: 0 0 14px;
+  max-width: 980px;
+  font-size: 48px;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.discordops-hero p {
+  margin: 0;
+  color: #aab4d0;
+  max-width: 860px;
+  line-height: 1.7;
+}
+
+.discordops-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.discordops-tags span {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d7dcf0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.discordops-hero-card {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top right, rgba(88, 101, 242, 0.22), transparent 35%),
+    rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.discordops-hero-card svg {
+  color: #9ea8ff;
+}
+
+.discordops-hero-card span,
+.discordops-hero-card small {
+  color: #9eabd0;
+  font-size: 12px;
+}
+
+.discordops-hero-card strong {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.discordops-message {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 168, 85, 0.1);
+  border: 1px solid rgba(255, 168, 85, 0.18);
+  color: #ffc58f;
+}
+
+.discordops-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.discordops-kpi-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(13, 17, 32, 0.92), rgba(8, 11, 22, 0.88));
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.2);
+}
+
+.discordops-kpi-card span {
+  color: #9eabd0;
+  font-size: 12px;
+}
+
+.discordops-kpi-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.discordops-kpi-card small {
+  display: block;
+  margin-top: 7px;
+  color: #7f8bb0;
+  font-size: 12px;
+}
+
+.discordops-kpi-card svg {
+  color: #22d3ee;
+  flex-shrink: 0;
+}
+
+.discordops-main-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 24px;
+}
+
+.discordops-side-stack {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.discordops-panel {
+  padding: 24px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(13, 17, 32, 0.92), rgba(8, 11, 22, 0.88));
+  border: 1px solid rgba(255,255,255,0.075);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.24);
+}
+
+.discordops-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.discordops-panel-header h2 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.discordops-panel-header svg {
+  color: #b8c3e5;
+}
+
+.discordops-icon-button {
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: white;
+  border-radius: 12px;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+
+.discordops-presence-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.discordops-presence-grid div {
+  padding: 15px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.055);
+}
+
+.discordops-presence-grid span {
+  color: #9eabd0;
+  font-size: 12px;
+}
+
+.discordops-presence-grid strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 24px;
+}
+
+.discordops-members-panel {
+  max-height: 760px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.discordops-member-list {
+  max-height: 590px;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  padding-right: 6px;
+}
+
+.discordops-member-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 12px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.055);
+}
+
+.discordops-member-row img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.discordops-member-row strong {
+  display: block;
+  font-size: 14px;
+}
+
+.discordops-member-row span {
+  display: block;
+  margin-top: 4px;
+  color: #9eabd0;
+  font-size: 12px;
+}
+
+.discordops-member-status {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.discordops-member-status.online {
+  background: #4ade80;
+}
+
+.discordops-member-status.idle {
+  background: #facc15;
+}
+
+.discordops-member-status.dnd {
+  background: #fb7185;
+}
+
+.discordops-member-status.offline {
+  background: #64748b;
+}
+
+.discordops-bot-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(88, 101, 242, 0.11);
+  border: 1px solid rgba(88, 101, 242, 0.18);
+  margin-bottom: 14px;
+}
+
+.discordops-bot-orb {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #5865f2, #22d3ee);
+}
+
+.discordops-bot-card strong {
+  display: block;
+  font-size: 16px;
+}
+
+.discordops-bot-card span {
+  color: #aab4d0;
+  font-size: 13px;
+}
+
+.discordops-bot-metrics {
+  display: grid;
+  gap: 10px;
+}
+
+.discordops-bot-metrics div,
+.discordops-check-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.055);
+}
+
+.discordops-bot-metrics span {
+  color: #9eabd0;
+  font-size: 12px;
+}
+
+.discordops-bot-metrics strong {
+  font-size: 13px;
+}
+
+.discordops-check-list {
+  display: grid;
+  gap: 10px;
+}
+
+.discordops-check-list div {
+  justify-content: flex-start;
+}
+
+.discordops-check-list svg {
+  color: #9ea8ff;
+}
+
+.discordops-check-list span {
+  color: #d7dcf0;
+  font-size: 13px;
+}
+
+.discordops-roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.discordops-roadmap-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.055);
+}
+
+.discordops-roadmap-card.done {
+  border-color: rgba(74, 222, 128, 0.18);
+}
+
+.discordops-roadmap-card.progress {
+  border-color: rgba(255, 168, 85, 0.18);
+}
+
+.discordops-roadmap-card.planned {
+  border-color: rgba(88, 101, 242, 0.18);
+}
+
+.discordops-roadmap-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: rgba(88, 101, 242, 0.14);
+  color: #b8c3ff;
+}
+
+.discordops-roadmap-card strong {
+  display: block;
+  font-size: 15px;
+}
+
+.discordops-roadmap-card p {
+  margin: 8px 0 12px;
+  color: #aab4d0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.discordops-roadmap-card > span {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: #d7dcf0;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.discordops-idea-list {
+  display: grid;
+  gap: 12px;
+}
+
+.discordops-idea-list > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 15px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.055);
+}
+
+.discordops-idea-list strong {
+  display: block;
+  font-size: 15px;
+}
+
+.discordops-idea-list p {
+  margin: 6px 0 0;
+  color: #aab4d0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.discordops-priority {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.discordops-priority.high {
+  background: rgba(255, 92, 132, 0.16);
+  color: #ffc0cf;
+}
+
+.discordops-priority.medium {
+  background: rgba(255, 168, 85, 0.16);
+  color: #ffc58f;
+}
+
+.discordops-priority.low {
+  background: rgba(34, 211, 238, 0.14);
+  color: #99f3ff;
+}
+
+.discordops-empty {
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  color: #9eabd0;
+}
+
+@media (max-width: 1280px) {
+  .discordops-hero,
+  .discordops-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discordops-kpi-grid,
+  .discordops-roadmap-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .discordops-hero h1 {
+    font-size: 36px;
+  }
+
+  .discordops-kpi-grid,
+  .discordops-roadmap-grid,
+  .discordops-presence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discordops-idea-list > div {
+    grid-template-columns: 1fr;
+  }
+}

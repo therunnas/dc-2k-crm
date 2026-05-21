@@ -9,5 +9,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "framer-motion": "^12.39.0",
+    "recharts": "^3.8.1"
+  }
 }

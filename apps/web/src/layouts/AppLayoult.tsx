@@ -15,7 +15,7 @@ const navItems = [
   { label: "Produções", path: "/producoes", icon: Film },
   { label: "Financeiro", path: "/financeiro", icon: CircleDollarSign },
   { label: "Clientes", path: "/clientes", icon: Users },
-  { label: "Reuniões", path: "/reunioes", icon: CalendarDays },
+  { label: "Agenda", path: "/agenda", icon: CalendarDays },
   { label: "Discord", path: "/discord", icon: Disc3 },
   { label: "Obsidian", path: "/obsidian", icon: FileText },
   { label: "Automações", path: "/automacoes", icon: Bot }
