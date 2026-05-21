@@ -145,7 +145,35 @@ function excelDateToISO(value: unknown): string | null {
 }
 
 
-function getSheetRows(workbook: XLSX.WorkBook, sheetName: string) {
+
+function normalizeKey(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .trim();
+}
+
+function findSheetName(workbook: XLSX.WorkBook, candidates: string[]) {
+  const normalizedCandidates = candidates.map(normalizeKey);
+
+  return workbook.SheetNames.find((sheetName) => {
+    const normalizedSheet = normalizeKey(sheetName);
+
+    return normalizedCandidates.some((candidate) =>
+      normalizedSheet.includes(candidate)
+    );
+  });
+}
+
+function getSheetRows(workbook: XLSX.WorkBook, sheetCandidates: string[]) {
+  const sheetName = findSheetName(workbook, sheetCandidates);
+
+  if (!sheetName) {
+    return [];
+  }
+
   const sheet = workbook.Sheets[sheetName];
 
   if (!sheet) {
@@ -159,59 +187,149 @@ function getSheetRows(workbook: XLSX.WorkBook, sheetName: string) {
   });
 }
 
-function parseEntradas(workbook: XLSX.WorkBook): EntradaFinanceira[] {
-  const rows = getSheetRows(workbook, "ðŸ’° ENTRADAS");
+function findColumnIndex(header: unknown[], aliases: string[]) {
+  const normalizedAliases = aliases.map(normalizeKey);
 
-  return rows
-    .slice(4)
+  return header.findIndex((cell) => {
+    const key = normalizeKey(cell);
+
+    if (!key) return false;
+
+    return normalizedAliases.some((alias) => {
+      return key === alias || key.includes(alias) || alias.includes(key);
+    });
+  });
+}
+
+function findHeaderRowIndex(rows: unknown[][], requiredColumns: string[][], maxScan = 20) {
+  const limit = Math.min(rows.length, maxScan);
+
+  for (let index = 0; index < limit; index += 1) {
+    const row = rows[index] ?? [];
+
+    const hasRequiredColumns = requiredColumns.every((aliases) => {
+      return findColumnIndex(row, aliases) >= 0;
+    });
+
+    if (hasRequiredColumns) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function getCell(row: unknown[], columnIndex: number, fallbackIndex: number) {
+  if (columnIndex >= 0) {
+    return row[columnIndex];
+  }
+
+  return row[fallbackIndex];
+}
+
+function parseEntradas(workbook: XLSX.WorkBook): EntradaFinanceira[] {
+  const rows = getSheetRows(workbook, ["ENTRADAS"]);
+
+  const headerRowIndex = findHeaderRowIndex(rows, [
+    ["PROJETO", "PRODUCAO", "DESCRICAO"],
+    ["VALOR", "TOTAL"],
+    ["STATUS", "SITUACAO"]
+  ]);
+
+  const header: unknown[] = headerRowIndex >= 0 ? (rows[headerRowIndex] ?? []) : [];
+  const dataRows = rows.slice(headerRowIndex >= 0 ? headerRowIndex + 1 : 4);
+
+  const mesIndex = findColumnIndex(header, ["MES", "MESREF", "COMPETENCIA", "REFERENCIA"]);
+  const grupoIndex = findColumnIndex(header, ["GRUPO", "CLIENTE", "CLIENTEGRUPO"]);
+  const marcaIndex = findColumnIndex(header, ["MARCA"]);
+  const projetoIndex = findColumnIndex(header, ["PROJETO", "PRODUCAO", "DESCRICAO"]);
+  const valorIndex = findColumnIndex(header, ["VALOR", "TOTAL"]);
+  const nfIndex = findColumnIndex(header, ["NF", "NOTAFISCAL"]);
+  const statusIndex = findColumnIndex(header, ["STATUS", "SITUACAO"]);
+  const emissaoIndex = findColumnIndex(header, ["EMISSAO", "DATAEMISSAO", "DATA"]);
+  const previsaoIndex = findColumnIndex(header, ["PREVISAO", "PREVISAORECEBIMENTO", "RECEBIMENTO"]);
+  const diasIndex = findColumnIndex(header, ["DIAS", "DIASPARARECEBER"]);
+  const recebidoIndex = findColumnIndex(header, ["RECEBIDO", "PAGO"]);
+  const observacaoIndex = findColumnIndex(header, ["OBS", "OBSERVACAO"]);
+  const idIndex = findColumnIndex(header, ["ID", "CODIGO"]);
+
+  return dataRows
     .map((row): EntradaFinanceira => {
       return {
-        mesRef: excelDateToISO(row[0]),
-        grupo: toText(row[1]),
-        marca: toText(row[2]),
-        projeto: toText(row[3]),
-        valor: toNumber(row[4]),
-        nf: row[5] as string | number | null,
-        status: toText(row[6]),
-        dataEmissao: excelDateToISO(row[7]),
-        previsaoRecebimento: excelDateToISO(row[8]),
-        diasParaReceber: toNumber(row[9]) || null,
-        recebido: toText(row[10]),
-        observacao: toText(row[11]),
-        id: toText(row[12])
+        mesRef: excelDateToISO(getCell(row, mesIndex, 0)),
+        grupo: toText(getCell(row, grupoIndex, 1)),
+        marca: toText(getCell(row, marcaIndex, 2)),
+        projeto: toText(getCell(row, projetoIndex, 3)),
+        valor: toNumber(getCell(row, valorIndex, 4)),
+        nf: getCell(row, nfIndex, 5) as string | number | null,
+        status: toText(getCell(row, statusIndex, 6)),
+        dataEmissao: excelDateToISO(getCell(row, emissaoIndex, 7)),
+        previsaoRecebimento: excelDateToISO(getCell(row, previsaoIndex, 8)),
+        diasParaReceber: toNumber(getCell(row, diasIndex, 9)) || null,
+        recebido: toText(getCell(row, recebidoIndex, 10)),
+        observacao: toText(getCell(row, observacaoIndex, 11)),
+        id: toText(getCell(row, idIndex, 12))
       };
     })
     .filter((item) => item.projeto && item.valor > 0);
 }
 
 function parseSaidas(workbook: XLSX.WorkBook): SaidaFinanceira[] {
-  const rows = getSheetRows(workbook, "ðŸ’¸ SAÃDAS");
+  const rows = getSheetRows(workbook, ["SAIDAS", "DESPESAS", "CUSTOS"]);
 
-  return rows
-    .slice(5)
+  const headerRowIndex = findHeaderRowIndex(rows, [
+    ["FORNECEDOR", "DESCRICAO", "CATEGORIA"],
+    ["VALOR", "TOTAL"]
+  ]);
+
+  const header: unknown[] = headerRowIndex >= 0 ? (rows[headerRowIndex] ?? []) : [];
+  const dataRows = rows.slice(headerRowIndex >= 0 ? headerRowIndex + 1 : 5);
+
+  const mesIndex = findColumnIndex(header, ["MES", "MESREF", "COMPETENCIA", "REFERENCIA"]);
+  const dataIndex = findColumnIndex(header, ["DATA"]);
+  const categoriaIndex = findColumnIndex(header, ["CATEGORIA", "CATEGORIAPRINCIPAL"]);
+  const fornecedorIndex = findColumnIndex(header, ["FORNECEDOR", "CLIENTE"]);
+  const descricaoIndex = findColumnIndex(header, ["DESCRICAO", "ITEM", "PROJETO"]);
+  const valorIndex = findColumnIndex(header, ["VALOR", "TOTAL"]);
+  const statusIndex = findColumnIndex(header, ["STATUS", "STATUSPAGAMENTO", "SITUACAO"]);
+  const recorrenciaIndex = findColumnIndex(header, ["RECORRENCIA"]);
+  const observacaoIndex = findColumnIndex(header, ["OBS", "OBSERVACAO"]);
+  const idIndex = findColumnIndex(header, ["ID", "CODIGO"]);
+  const subcategoriaIndex = findColumnIndex(header, ["SUBCATEGORIA"]);
+  const naturezaIndex = findColumnIndex(header, ["NATUREZA"]);
+
+  return dataRows
     .map((row): SaidaFinanceira => {
       return {
-        mesRef: excelDateToISO(row[0]),
-        data: excelDateToISO(row[1]),
-        categoriaPrincipal: toText(row[2]),
-        fornecedor: toText(row[3]),
-        descricao: toText(row[4]),
-        valor: toNumber(row[5]),
-        statusPagamento: toText(row[6]),
-        recorrencia: toText(row[7]),
-        observacao: toText(row[8]),
-        id: toText(row[9]),
-        subcategoria: toText(row[10]),
-        natureza: toText(row[11])
+        mesRef: excelDateToISO(getCell(row, mesIndex, 0)),
+        data: excelDateToISO(getCell(row, dataIndex, 1)),
+        categoriaPrincipal: toText(getCell(row, categoriaIndex, 2)),
+        fornecedor: toText(getCell(row, fornecedorIndex, 3)),
+        descricao: toText(getCell(row, descricaoIndex, 4)),
+        valor: toNumber(getCell(row, valorIndex, 5)),
+        statusPagamento: toText(getCell(row, statusIndex, 6)),
+        recorrencia: toText(getCell(row, recorrenciaIndex, 7)),
+        observacao: toText(getCell(row, observacaoIndex, 8)),
+        id: toText(getCell(row, idIndex, 9)),
+        subcategoria: toText(getCell(row, subcategoriaIndex, 10)),
+        natureza: toText(getCell(row, naturezaIndex, 11))
       };
     })
-    .filter((item) => item.fornecedor && item.valor > 0);
+    .filter((item) => (item.fornecedor || item.descricao || item.categoriaPrincipal) && item.valor > 0);
 }
 
-function parseGenericRanking(workbook: XLSX.WorkBook, sheetName: string, headerRowIndex: number) {
-  const rows = getSheetRows(workbook, sheetName).filter(Array.isArray) as unknown[][];
+function parseGenericRanking(workbook: XLSX.WorkBook, sheetCandidates: string[]) {
+  const rows = getSheetRows(workbook, sheetCandidates).filter(Array.isArray) as unknown[][];
 
-  const header = rows[headerRowIndex] ?? [];
+  const headerRowIndex = rows.findIndex((row) => {
+    return row.filter((cell) => cell !== null && cell !== "").length >= 2;
+  });
+
+  if (headerRowIndex < 0) {
+    return [];
+  }
+
+  const header: unknown[] = rows[headerRowIndex] ?? [];
 
   return rows
     .slice(headerRowIndex + 1)
@@ -228,6 +346,7 @@ function parseGenericRanking(workbook: XLSX.WorkBook, sheetName: string, headerR
       return record;
     });
 }
+
 
 
 function aggregateBy<T>(
@@ -515,9 +634,21 @@ app.post("/api/import/fluxo", upload.single("file"), (req, res) => {
 
     const entradas = parseEntradas(workbook);
     const saidas = parseSaidas(workbook);
-    const grupos = parseGenericRanking(workbook, "ðŸ‘¥ GRUPOS", 3);
-    const marcas = parseGenericRanking(workbook, "ðŸŽ¨ MARCAS", 3);
+
+    if (entradas.length === 0 && saidas.length === 0) {
+      return res.status(422).json({
+        success: false,
+        error: "A planilha foi recebida, mas nenhuma entrada ou saída foi encontrada.",
+        detail: "Verifique se o arquivo possui abas de ENTRADAS/SAÍDAS e colunas de PROJETO, VALOR e STATUS.",
+        abasEncontradas: workbook.SheetNames
+      });
+    }
+
     const dashboardFinanceiro = buildDashboardFinanceiro(entradas, saidas);
+    const gruposFromSheet = parseGenericRanking(workbook, ["GRUPOS"]);
+    const marcasFromSheet = parseGenericRanking(workbook, ["MARCAS"]);
+    const grupos = gruposFromSheet.length ? gruposFromSheet : dashboardFinanceiro.rankings.grupos;
+    const marcas = marcasFromSheet.length ? marcasFromSheet : dashboardFinanceiro.rankings.marcas;
 
     const importFilePath = path.join(
       IMPORTS_DIR,
