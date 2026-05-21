@@ -72,3 +72,7 @@ apps/server/src/**/*.js
 apps/server/src/**/*.js.map
 apps/server/src/**/*.d.ts
 apps/server/src/**/*.d.ts.map
+
+# Local environment
+apps/server/.env
+

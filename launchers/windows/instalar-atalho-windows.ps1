@@ -1,5 +1,5 @@
 ﻿$ProjectDir = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$Launcher = Join-Path $ProjectDir "launchers\windows\2K Command OS.bat"
+$Launcher = Join-Path $ProjectDir "2K Command OS.vbs"
 
 $Desktop = [Environment]::GetFolderPath("Desktop")
 $StartMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
@@ -20,8 +20,5 @@ $Shortcut2.WorkingDirectory = $ProjectDir
 $Shortcut2.IconLocation = "$env:SystemRoot\System32\SHELL32.dll,220"
 $Shortcut2.Save()
 
-Write-Host ""
-Write-Host "Atalhos criados:"
-Write-Host "- Area de Trabalho: 2K Command OS"
-Write-Host "- Menu Iniciar: 2K Command OS"
-Write-Host ""
+Add-Type -AssemblyName System.Windows.Forms
+[System.Windows.Forms.MessageBox]::Show("Atalhos criados na Área de Trabalho e no Menu Iniciar.", "2K Command OS")

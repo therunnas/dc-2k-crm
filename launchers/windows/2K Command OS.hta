@@ -1,0 +1,517 @@
+﻿<html>
+<head>
+  <title>2K Command OS</title>
+  <HTA:APPLICATION
+    ID="app"
+    APPLICATIONNAME="2K Command OS"
+    BORDER="thin"
+    BORDERSTYLE="normal"
+    CAPTION="yes"
+    SHOWINTASKBAR="yes"
+    SINGLEINSTANCE="yes"
+    SYSMENU="yes"
+    WINDOWSTATE="normal"
+    SCROLL="yes"
+  />
+  <meta http-equiv="x-ua-compatible" content="IE=11" />
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 18px;
+      font-family: Segoe UI, Arial, sans-serif;
+      background: #05070a;
+      color: #ffffff;
+    }
+
+    .hero {
+      padding: 24px;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at top right, rgba(34,211,238,0.22), transparent 35%),
+        linear-gradient(135deg, rgba(30,27,75,0.95), rgba(8,13,27,0.96));
+      border: 1px solid rgba(255,255,255,0.10);
+      margin-bottom: 16px;
+    }
+
+    .overline {
+      color: #a7b8ff;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1;
+    }
+
+    .sub {
+      color: #b8c3e5;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .panel {
+      padding: 20px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(13,17,32,0.96), rgba(8,11,22,0.94));
+      border: 1px solid rgba(255,255,255,0.10);
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 18px;
+    }
+
+    label {
+      display: block;
+      color: #a7b8ff;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 12px 0 7px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0b1020;
+      color: #ffffff;
+      padding: 0 12px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .row {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .cell {
+      display: table-cell;
+      vertical-align: middle;
+    }
+
+    .cell.path {
+      width: auto;
+      padding-right: 8px;
+    }
+
+    .cell.btn {
+      width: 100px;
+    }
+
+    .checkline {
+      margin-top: 12px;
+      font-weight: 900;
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+
+    .buttons {
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 16px;
+      margin: 4px;
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+      background: #1e293b;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.20);
+    }
+
+    button.primary { background: linear-gradient(135deg, #22c55e, #06b6d4); }
+    button.blue { background: linear-gradient(135deg, #6366f1, #38bdf8); }
+    button.purple { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+    button.orange { background: linear-gradient(135deg, #f97316, #f59e0b); }
+    button.red { background: linear-gradient(135deg, #fb7185, #ef4444); }
+
+    .notice {
+      padding: 13px;
+      margin-top: 14px;
+      border-radius: 12px;
+      background: rgba(249,115,22,0.10);
+      border: 1px solid rgba(249,115,22,0.28);
+      color: #fed7aa;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .log {
+      min-height: 78px;
+      white-space: pre-wrap;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(8,47,73,0.45);
+      border: 1px solid rgba(34,211,238,0.20);
+      color: #a5f3fc;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+  </style>
+
+  <script language="javascript">
+    var shell = new ActiveXObject("WScript.Shell");
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+
+    var appData = shell.ExpandEnvironmentStrings("%APPDATA%");
+    var configDir = appData + "\\2KCommandOS";
+    var configFile = configDir + "\\executor-config.ini";
+
+    function ensureFolder(path) {
+      if (!fso.FolderExists(path)) {
+        fso.CreateFolder(path);
+      }
+    }
+
+    function currentFilePath() {
+      var p = decodeURIComponent(location.pathname);
+      if (p.charAt(0) == "/") p = p.substring(1);
+      return p.replace(/\//g, "\\");
+    }
+
+    function defaultProjectDir() {
+      var file = currentFilePath();
+      var windowsFolder = fso.GetParentFolderName(file);
+      var launchersFolder = fso.GetParentFolderName(windowsFolder);
+      return fso.GetParentFolderName(launchersFolder);
+    }
+
+    function readText(path) {
+      if (!fso.FileExists(path)) return "";
+      var file = fso.OpenTextFile(path, 1, false);
+      var text = file.ReadAll();
+      file.Close();
+      return text;
+    }
+
+    function writeText(path, text) {
+      var file = fso.OpenTextFile(path, 2, true);
+      file.Write(text);
+      file.Close();
+    }
+
+    function log(text) {
+      document.getElementById("log").innerText = text;
+    }
+
+    function getProjectDir() {
+      return document.getElementById("projectDir").value;
+    }
+
+    function serverDir() {
+      return getProjectDir() + "\\apps\\server";
+    }
+
+    function webDir() {
+      return getProjectDir() + "\\apps\\web";
+    }
+
+    function envPath() {
+      return serverDir() + "\\.env";
+    }
+
+    function isValidProject() {
+      return fso.FolderExists(serverDir()) && fso.FolderExists(webDir());
+    }
+
+    function saveConfig() {
+      ensureFolder(configDir);
+
+      var data = "";
+      data += "projectDir=" + getProjectDir() + "\n";
+      data += "savedAt=" + new Date().toISOString() + "\n";
+
+      writeText(configFile, data);
+      saveEnv();
+
+      log("Configuração salva.\nCaminho do projeto e ENV gravados.");
+    }
+
+    function loadConfig() {
+      var project = defaultProjectDir();
+
+      if (fso.FileExists(configFile)) {
+        var text = readText(configFile);
+        var lines = text.split(/\r?\n/);
+
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].indexOf("projectDir=") == 0) {
+            project = lines[i].substring("projectDir=".length);
+          }
+        }
+      }
+
+      document.getElementById("projectDir").value = project;
+
+      loadEnv();
+      log("Configuração carregada.\nSe for o primeiro uso, revise o ENV e clique em Salvar configuração.");
+    }
+
+    function loadEnv() {
+      document.getElementById("port").value = "3333";
+      document.getElementById("discordEnabled").checked = false;
+      document.getElementById("token").value = "";
+      document.getElementById("guildId").value = "";
+      document.getElementById("channelId").value = "";
+
+      if (!fso.FileExists(envPath())) return;
+
+      var text = readText(envPath());
+      var lines = text.split(/\r?\n/);
+
+      for (var i = 0; i < lines.length; i++) {
+        var idx = lines[i].indexOf("=");
+        if (idx <= 0) continue;
+
+        var key = lines[i].substring(0, idx);
+        var val = lines[i].substring(idx + 1);
+
+        if (key == "PORT") document.getElementById("port").value = val;
+        if (key == "DISCORD_BOT_ENABLED") document.getElementById("discordEnabled").checked = (val == "true");
+        if (key == "DISCORD_BOT_TOKEN") document.getElementById("token").value = val;
+        if (key == "DISCORD_GUILD_ID") document.getElementById("guildId").value = val;
+        if (key == "DISCORD_ALERT_CHANNEL_ID") document.getElementById("channelId").value = val;
+      }
+    }
+
+    function saveEnv() {
+      if (!isValidProject()) {
+        alert("Pasta do projeto inválida. Selecione a raiz dc-2k-crm.");
+        return;
+      }
+
+      var enabled = document.getElementById("discordEnabled").checked ? "true" : "false";
+
+      var text = "";
+      text += "PORT=" + document.getElementById("port").value + "\n\n";
+      text += "DISCORD_BOT_ENABLED=" + enabled + "\n";
+      text += "DISCORD_BOT_TOKEN=" + document.getElementById("token").value + "\n";
+      text += "DISCORD_GUILD_ID=" + document.getElementById("guildId").value + "\n";
+      text += "DISCORD_ALERT_CHANNEL_ID=" + document.getElementById("channelId").value + "\n";
+
+      writeText(envPath(), text);
+    }
+
+    function browseProject() {
+      var app = new ActiveXObject("Shell.Application");
+      var folder = app.BrowseForFolder(0, "Selecione a pasta raiz do projeto dc-2k-crm", 0);
+
+      if (folder) {
+        document.getElementById("projectDir").value = folder.Self.Path;
+        loadEnv();
+        log("Pasta selecionada:\n" + folder.Self.Path);
+      }
+    }
+
+    function runHidden(command) {
+      shell.Run(command, 0, false);
+    }
+
+    function runVisible(command) {
+      shell.Run(command, 1, false);
+    }
+
+    function stopAll() {
+      var ps1 = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Get-NetTCPConnection -LocalPort 3333 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -ne 0 } | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"";
+      var ps2 = "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -ne 0 } | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"";
+
+      runHidden(ps1);
+      runHidden(ps2);
+
+      log("Backend e frontend finalizados.");
+    }
+
+    function openBackend() {
+      if (!isValidProject()) {
+        alert("Pasta do projeto inválida.");
+        return;
+      }
+
+      if (!fso.FileExists(envPath())) {
+        alert(".env não encontrado. Salve a configuração antes.");
+        return;
+      }
+
+      var cmd = 'cmd.exe /c cd /d "' + serverDir() + '" && npm run dev > backend.log 2>&1';
+      runHidden(cmd);
+      log("Backend iniciado em segundo plano.\nhttp://localhost:3333");
+    }
+
+    function openFrontend() {
+      if (!isValidProject()) {
+        alert("Pasta do projeto inválida.");
+        return;
+      }
+
+      var cmd = 'cmd.exe /c cd /d "' + webDir() + '" && npm run dev > frontend.log 2>&1';
+      runHidden(cmd);
+      log("Frontend iniciado em segundo plano.\nhttp://localhost:5173");
+    }
+
+    function openBrowser() {
+      shell.Run("http://localhost:5173/dashboard", 1, false);
+    }
+
+    function openFullApp() {
+      if (!isValidProject()) {
+        alert("Pasta do projeto inválida.");
+        return;
+      }
+
+      if (!fso.FileExists(envPath())) {
+        alert(".env não encontrado. Salve a configuração antes.");
+        return;
+      }
+
+      stopAll();
+
+      setTimeout(function () {
+        openBackend();
+      }, 1000);
+
+      setTimeout(function () {
+        openFrontend();
+      }, 6000);
+
+      setTimeout(function () {
+        openBrowser();
+        log("App completo iniciado.\nBackend + Frontend + Navegador.");
+      }, 12000);
+    }
+
+    function installDeps() {
+      if (!isValidProject()) {
+        alert("Pasta do projeto inválida.");
+        return;
+      }
+
+      var cmd = 'cmd.exe /c start "2K Command OS - Instalar dependências" cmd /k "cd /d "' + serverDir() + '" && npm install && cd /d "' + webDir() + '" && npm install && echo. && echo Dependencias instaladas. && pause"';
+      shell.Run(cmd, 1, false);
+
+      log("Instalação de dependências iniciada.\nAguarde a janela finalizar.");
+    }
+
+    function firstSetup() {
+      saveConfig();
+      installDeps();
+      log("Primeira configuração iniciada.\nDepois que dependências terminarem, clique em Abrir App Completo.");
+    }
+
+    function updateProject() {
+      if (!isValidProject()) {
+        alert("Pasta do projeto inválida.");
+        return;
+      }
+
+      var cmd = 'cmd.exe /c start "2K Command OS - Atualizar" cmd /k "cd /d "' + getProjectDir() + '" && git pull origin main && cd /d "' + serverDir() + '" && npm install && npm run build && cd /d "' + webDir() + '" && npm install && npm run build && echo. && echo Atualizacao concluida. && pause"';
+      shell.Run(cmd, 1, false);
+
+      log("Atualização iniciada.\nAguarde a janela finalizar.");
+    }
+
+    function testStatus() {
+      var cmd = 'cmd.exe /c start "2K Command OS - Status" cmd /k "echo BACKEND && powershell -NoProfile -Command "try { Invoke-RestMethod http://localhost:3333/health | ConvertTo-Json -Depth 5 } catch { Write-Host BACKEND_OFFLINE }" && echo. && echo DISCORD && powershell -NoProfile -Command "try { Invoke-RestMethod http://localhost:3333/api/discord/bot/status | ConvertTo-Json -Depth 5 } catch { Write-Host DISCORD_OFFLINE }" && echo. && echo FRONTEND && powershell -NoProfile -Command "try { Invoke-WebRequest http://localhost:5173 -UseBasicParsing | Select-Object StatusCode } catch { Write-Host FRONTEND_OFFLINE }" && pause"';
+      shell.Run(cmd, 1, false);
+      log("Teste de status aberto.");
+    }
+
+    function openEnvFolder() {
+      shell.Run('explorer.exe "' + serverDir() + '"', 1, false);
+    }
+
+    window.onload = loadConfig;
+  </script>
+</head>
+
+<body>
+  <div class="hero">
+    <div class="overline">Executor local</div>
+    <h1>2K Command OS</h1>
+    <div class="sub">
+      Configure uma vez. Depois use “Abrir App Completo” para iniciar backend, frontend e navegador sem repetir ENV, Discord Bot ou dependências.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Configuração salva</h2>
+
+    <label>Pasta do projeto dc-2k-crm</label>
+    <div class="row">
+      <div class="cell path">
+        <input id="projectDir" type="text" />
+      </div>
+      <div class="cell btn">
+        <button onclick="browseProject()">Procurar</button>
+      </div>
+    </div>
+
+    <label>Porta backend</label>
+    <input id="port" type="text" value="3333" />
+
+    <div class="checkline">
+      <input id="discordEnabled" type="checkbox" />
+      ATIVAR DISCORD BOT
+    </div>
+
+    <label>DISCORD_BOT_TOKEN</label>
+    <input id="token" type="password" />
+
+    <label>DISCORD_GUILD_ID</label>
+    <input id="guildId" type="text" />
+
+    <label>DISCORD_ALERT_CHANNEL_ID</label>
+    <input id="channelId" type="text" />
+
+    <div class="buttons">
+      <button class="purple" onclick="saveConfig()">Salvar configuração</button>
+      <button onclick="loadConfig()">Recarregar</button>
+      <button class="orange" onclick="firstSetup()">Primeira configuração</button>
+      <button onclick="openEnvFolder()">Abrir pasta ENV</button>
+    </div>
+
+    <div class="notice">
+      A configuração fica salva em dois locais: caminho do projeto em %APPDATA%\2KCommandOS e bot no arquivo apps/server/.env.
+      Você só refaz isso quando trocar projeto, máquina, bot ou canal.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Ações rápidas</h2>
+
+    <div class="buttons">
+      <button class="primary" onclick="openFullApp()">Abrir App Completo</button>
+      <button onclick="openBrowser()">Abrir navegador</button>
+      <button class="blue" onclick="openBackend()">Abrir Backend</button>
+      <button class="purple" onclick="openFrontend()">Abrir Frontend</button>
+      <button class="orange" onclick="installDeps()">Instalar dependências</button>
+      <button class="orange" onclick="updateProject()">Atualizar projeto</button>
+      <button onclick="testStatus()">Testar status</button>
+      <button class="red" onclick="stopAll()">Parar tudo</button>
+    </div>
+
+    <div class="notice">
+      Uso diário recomendado: clique em <b>Abrir App Completo</b>. Não é necessário configurar ENV nem instalar dependências todos os dias.
+    </div>
+
+    <div id="log" class="log"></div>
+  </div>
+</body>
+</html>
