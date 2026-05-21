@@ -7,29 +7,9 @@
 ![Node.js](https://img.shields.io/badge/Node.js-backend-4ade80)
 ![Express](https://img.shields.io/badge/Express-API-111827)
 
-# 2K Command OS
-
 Painel operacional local da **2K Studios** para centralizar financeiro, produções, clientes, agenda, automações, Obsidian e Discord Bot.
 
-O sistema transforma dados da planilha operacional da empresa em um painel interno com visão executiva, controle financeiro, acompanhamento de projetos e integração com Discord.
-
----
-
-## Visão geral
-
-O **2K Command OS** roda localmente no computador e possui:
-
-- Dashboard executivo
-- Importação de planilha `.xlsx`
-- Financeiro com entradas, saídas e status de recebimento
-- Produções importadas da planilha
-- Clientes / CRM
-- Agenda operacional
-- Automações e ações sugeridas
-- Obsidian para documentação
-- Bot Discord integrado
-- Executor visual para Windows
-- Executor local para MacBook/macOS
+O sistema roda localmente com **backend Node.js/Express**, **frontend React/Vite** e executores para **Windows** e **macOS**.
 
 ---
 
@@ -37,20 +17,11 @@ O **2K Command OS** roda localmente no computador e possui:
 
 Antes de usar, instale:
 
-### Windows
-
 - Git
 - Node.js LTS
-- Google Chrome, Microsoft Edge ou outro navegador
+- Navegador atualizado
 
-### macOS
-
-- Git
-- Node.js LTS
-- Terminal padrão do macOS
-- Safari, Chrome ou outro navegador
-
-Para conferir se está instalado:
+Teste no terminal:
 
 ```bash
 node -v
@@ -60,189 +31,48 @@ git --version
 
 ---
 
-# Instalação no Windows
+## Instalação no Windows
 
-## 1. Clonar o projeto
-
-Abra o PowerShell e vá para a pasta onde você guarda seus projetos:
+Clone o projeto:
 
 ```powershell
 cd "$env:USERPROFILE\Documents\GitHub"
-```
-
-Clone o repositório:
-
-```powershell
 git clone https://github.com/therunnas/dc-2k-crm.git
-```
-
-Entre na pasta do projeto:
-
-```powershell
 cd dc-2k-crm
 ```
 
-A pasta correta do projeto será algo como:
-
-```txt
-C:\Users\SEU_USUARIO\Documents\GitHub\dc-2k-crm
-```
-
----
-
-## 2. Abrir o executor visual no Windows
-
-Na raiz do projeto, abra com duplo clique:
+Abra o executor visual:
 
 ```txt
 2K Command OS.vbs
 ```
 
-Esse é o executor visual do Windows.
+No primeiro uso:
 
-Ele permite:
+1. Confirme a pasta do projeto.
+2. Configure o `.env` / Discord Bot.
+3. Clique em **Salvar configuração**.
+4. Clique em **Instalar dependências**.
+5. Clique em **Abrir App Completo**.
 
-- Salvar configuração
-- Configurar ENV / Discord Bot
-- Instalar dependências
-- Abrir App Completo
-- Abrir Backend
-- Abrir Frontend
-- Abrir navegador
-- Atualizar projeto
-- Testar status
-- Parar tudo
-
----
-
-## 3. Primeira configuração no Windows
-
-No executor visual:
-
-### 3.1 Conferir pasta do projeto
-
-Confirme se o campo **Pasta do projeto dc-2k-crm** está apontando para a raiz do projeto:
+Uso diário:
 
 ```txt
-C:\Users\SEU_USUARIO\Documents\GitHub\dc-2k-crm
+Abrir 2K Command OS.vbs
+Clicar em Abrir App Completo
 ```
 
-Não selecione `apps`, `apps/web` ou `apps/server`.
-
-Selecione sempre a raiz:
-
-```txt
-dc-2k-crm
-```
-
----
-
-### 3.2 Configurar ENV / Discord Bot
-
-Preencha os campos:
-
-```env
-PORT=3333
-DISCORD_BOT_ENABLED=true
-DISCORD_BOT_TOKEN=SEU_TOKEN_DO_BOT
-DISCORD_GUILD_ID=ID_DO_SERVIDOR
-DISCORD_ALERT_CHANNEL_ID=ID_DO_CANAL_PADRAO
-```
-
-Depois clique em:
-
-```txt
-Salvar configuração
-```
-
-O arquivo `.env` será salvo em:
-
-```txt
-apps/server/.env
-```
-
-Esse arquivo não sobe para o GitHub.
-
-O caminho do projeto fica salvo localmente em:
-
-```txt
-%APPDATA%\2KCommandOS
-```
-
-Você só precisa configurar isso novamente se trocar de máquina, trocar a pasta do projeto, trocar o bot, trocar o servidor ou trocar o canal padrão.
-
----
-
-### 3.3 Instalar dependências
-
-No primeiro uso, clique em:
-
-```txt
-Instalar dependências
-```
-
-ou:
-
-```txt
-Primeira configuração
-```
-
-Isso instala as dependências do backend e do frontend.
-
----
-
-## 4. Uso diário no Windows
-
-Depois da primeira configuração, o uso normal é:
-
-1. Abrir:
-
-```txt
-2K Command OS.vbs
-```
-
-2. Clicar em:
-
-```txt
-Abrir App Completo
-```
-
-O executor inicia:
-
-```txt
-Backend   → http://localhost:3333
-Frontend  → http://localhost:5173
-Dashboard → http://localhost:5173/dashboard
-```
-
-Não é necessário configurar `.env`, Discord Bot ou dependências todos os dias.
-
----
-
-## 5. Criar atalho na Área de Trabalho no Windows
-
-Na raiz do projeto, rode uma vez no PowerShell:
+Para criar atalho na Área de Trabalho/Menu Iniciar:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ".\launchers\windows\instalar-atalho-windows.ps1"
 ```
 
-Isso cria atalhos para o executor visual em:
-
-```txt
-Área de Trabalho > 2K Command OS
-Menu Iniciar > 2K Command OS
-```
-
-Depois disso, use o atalho normalmente.
-
 ---
 
-# Instalação no MacBook / macOS
+## Instalação no macOS
 
-## 1. Clonar o projeto
-
-Abra o Terminal e rode:
+Clone o projeto:
 
 ```bash
 mkdir -p ~/Documents/GitHub
@@ -251,189 +81,39 @@ git clone https://github.com/therunnas/dc-2k-crm.git
 cd dc-2k-crm
 ```
 
-A pasta correta do projeto será:
-
-```txt
-~/Documents/GitHub/dc-2k-crm
-```
-
----
-
-## 2. Liberar os executores do Mac
-
-No Terminal, dentro da pasta do projeto, rode:
+Libere os executores:
 
 ```bash
 chmod +x "launchers/mac/criar-app-mac.command"
 chmod +x "launchers/mac/instalar-atalho-mac.command"
 ```
 
----
-
-## 3. Criar o app local do Mac
-
-Rode:
+Crie o app local:
 
 ```bash
 ./launchers/mac/criar-app-mac.command
 ```
 
-Isso cria o app local:
-
-```txt
-launchers/mac/2K Command OS.app
-```
-
----
-
-## 4. Instalar o app na Mesa
-
-Rode:
+Instale na Mesa:
 
 ```bash
 ./launchers/mac/instalar-atalho-mac.command
 ```
 
-Isso cria uma cópia do app na Mesa:
-
-```txt
-Desktop / Mesa > 2K Command OS.app
-```
-
----
-
-## 5. Abrir o app no Mac pela primeira vez
-
-Se o macOS bloquear o app:
-
-1. Clique com o botão direito em:
+Abra:
 
 ```txt
 2K Command OS.app
 ```
 
-2. Clique em:
+No primeiro uso:
 
-```txt
-Abrir
-```
+1. Selecione a pasta do projeto.
+2. Configure o `.env` / Discord Bot.
+3. Instale as dependências.
+4. Clique em **Abrir App Completo**.
 
-3. Confirme novamente em:
-
-```txt
-Abrir
-```
-
-Isso libera o app para uso.
-
----
-
-## 6. Primeira configuração no Mac
-
-Dentro do app:
-
-### 6.1 Selecionar pasta do projeto
-
-Clique em:
-
-```txt
-Selecionar pasta do projeto
-```
-
-Selecione:
-
-```txt
-~/Documents/GitHub/dc-2k-crm
-```
-
----
-
-### 6.2 Configurar ENV / Discord Bot
-
-Clique em:
-
-```txt
-Configurar ENV / Discord Bot
-```
-
-Preencha:
-
-```env
-PORT=3333
-DISCORD_BOT_ENABLED=true
-DISCORD_BOT_TOKEN=SEU_TOKEN_DO_BOT
-DISCORD_GUILD_ID=ID_DO_SERVIDOR
-DISCORD_ALERT_CHANNEL_ID=ID_DO_CANAL_PADRAO
-```
-
-O arquivo será salvo em:
-
-```txt
-apps/server/.env
-```
-
----
-
-### 6.3 Instalar dependências
-
-Clique em:
-
-```txt
-Instalar dependências
-```
-
-ou:
-
-```txt
-Primeira configuração guiada
-```
-
----
-
-## 7. Uso diário no Mac
-
-Depois da primeira configuração:
-
-1. Abra:
-
-```txt
-2K Command OS.app
-```
-
-2. Clique em:
-
-```txt
-Abrir App Completo
-```
-
-O app inicia:
-
-```txt
-Backend   → http://localhost:3333
-Frontend  → http://localhost:5173
-Dashboard → http://localhost:5173/dashboard
-```
-
-Não é necessário configurar `.env`, Discord Bot ou dependências todos os dias.
-
----
-
-# Uso diário recomendado
-
-## Windows
-
-```txt
-Abrir 2K Command OS.vbs
-Clicar em Abrir App Completo
-```
-
-ou pelo atalho:
-
-```txt
-Área de Trabalho > 2K Command OS
-```
-
-## MacBook / macOS
+Uso diário:
 
 ```txt
 Abrir 2K Command OS.app
@@ -442,216 +122,72 @@ Clicar em Abrir App Completo
 
 ---
 
-# Quando configurar novamente
+## Configuração do Discord Bot
 
-Você só precisa refazer a configuração se:
-
-- Trocar de computador
-- Mudar a pasta do projeto
-- Trocar token do bot
-- Trocar servidor do Discord
-- Trocar canal padrão do Discord
-- Apagar `apps/server/.env`
-- Apagar `node_modules`
-- Clonar o projeto em uma nova máquina
-
----
-
-# Importar planilha
-
-Com o sistema aberto:
-
-1. Acesse:
+O `.env` fica em:
 
 ```txt
-http://localhost:5173/financeiro
+apps/server/.env
 ```
 
-2. Clique em:
+Modelo:
 
-```txt
-Selecionar planilha
+```env
+PORT=3333
+
+DISCORD_BOT_ENABLED=true
+DISCORD_BOT_TOKEN=SEU_TOKEN_DO_BOT
+DISCORD_GUILD_ID=ID_DO_SERVIDOR
+DISCORD_ALERT_CHANNEL_ID=ID_DO_CANAL_PADRAO
 ```
 
-3. Importe a planilha `.xlsx`.
-
-4. Confira os dados em:
-
-```txt
-Dashboard
-Financeiro
-Produções
-Clientes
-Agenda
-Automações
-```
-
----
-
-# Dashboard
-
-O Dashboard mostra:
-
-- Faturamento no ano
-- Recebido no caixa
-- A receber
-- Saídas
-- Resultado de caixa
-- Lucro por competência
-- Margem
-- Pré-faturamento
-- Gráfico de faturamento por mês
-- Status financeiro
-- Top grupos por faturamento
-- Próximos recebimentos
-
----
-
-# Financeiro
-
-A página Financeiro permite:
-
-- Importar planilha `.xlsx`
-- Conferir entradas
-- Conferir saídas
-- Ver totais por status
-- Ver pagamentos recebidos
-- Ver aguardando pagamento
-- Ver itens para gerar NF
-- Ver itens para confirmar informação
-
-Status principais:
-
-```txt
-PAGO
-AGUARDANDO PAGAMENTO
-GERAR NF
-CONFIRMAR INFO
-ATRASADO
-```
-
----
-
-# Produções
-
-A página Produções lista projetos importados da planilha, com:
-
-- Projeto
-- Grupo
-- Marca
-- Valor
-- Status
-- Mês
-- Emissão
-- Previsão
-- NF
-
----
-
-# Clientes / CRM
-
-A página Clientes mostra:
-
-- Grupos
-- Marcas
-- Ranking por faturamento
-- Participação por cliente
-- Projetos vinculados
-
----
-
-# Agenda
-
-A página Agenda organiza:
-
-- Prazos
-- Próximos recebimentos
-- Follow-ups
-- Itens vencidos
-- Datas operacionais importantes
-
----
-
-# Automações
-
-A página Automações centraliza:
-
-- Ações sugeridas
-- Alertas financeiros
-- Follow-ups
-- Itens de NF
-- Confirmações pendentes
-- Checklist operacional
-
----
-
-# Obsidian
-
-A página Obsidian ajuda a criar notas operacionais em Markdown.
-
-Templates previstos:
-
-- Diário operacional
-- Cliente
-- Produção
-- Financeiro
-- Problema & solução
-- Automação
-- Agenda / reunião
-- Nota livre
-
----
-
-# Discord Bot
-
-O bot Discord funciona enquanto o backend estiver ligado.
-
-No modo local:
+O bot fica online enquanto o backend estiver rodando.
 
 ```txt
 Backend ligado = bot online
 Backend fechado = bot offline
-PC/Mac desligado = bot offline
 ```
 
-A aba Discord permite:
-
-- Ver status real do bot
-- Ver servidor conectado
-- Ver canal padrão
-- Listar canais do servidor
-- Escolher uma sala
-- Enviar mensagem manual pelo painel
-
-Para deixar o bot online 24/7, será necessário hospedar o backend em servidor/cloud.
+Para deixar o bot 24/7, será necessário hospedar o backend em servidor/cloud.
 
 ---
 
-# Segurança
-
-Nunca envie para o GitHub:
+## URLs locais
 
 ```txt
-apps/server/.env
-apps/server/data/
-node_modules/
-dist/
-obsidian-vault/
+Dashboard: http://localhost:5173/dashboard
+Frontend:  http://localhost:5173
+Backend:   http://localhost:3333
+Health:    http://localhost:3333/health
 ```
-
-Esses arquivos são locais e devem ficar protegidos pelo `.gitignore`.
-
-O arquivo permitido é:
-
-```txt
-apps/server/.env.example
-```
-
-Ele serve apenas como modelo e não deve conter token real.
 
 ---
 
-# Estrutura principal
+## Módulos
+
+- **Dashboard** — visão executiva do fluxo.
+- **Financeiro** — importação da planilha e controle de entradas/saídas.
+- **Produções** — projetos importados da planilha.
+- **Clientes** — grupos, marcas e faturamento por cliente.
+- **Agenda** — prazos e próximos recebimentos.
+- **Automações** — ações sugeridas e alertas operacionais.
+- **Obsidian** — apoio à documentação interna.
+- **Discord** — status do bot e envio de mensagens por canal.
+
+---
+
+## Importar planilha
+
+Com o sistema aberto:
+
+1. Acesse `/financeiro`.
+2. Clique em **Selecionar planilha**.
+3. Importe o arquivo `.xlsx`.
+4. Confira os dados no Dashboard.
+
+---
+
+## Estrutura principal
 
 ```txt
 dc-2k-crm/
@@ -662,22 +198,20 @@ dc-2k-crm/
 ├── launchers/
 │   ├── windows/
 │   │   ├── 2K Command OS.hta
-│   │   ├── instalar-atalho-windows.ps1
-│   │   └── README-WINDOWS.md
+│   │   └── instalar-atalho-windows.ps1
 │   └── mac/
 │       ├── 2K Command OS.applescript
 │       ├── criar-app-mac.command
-│       ├── instalar-atalho-mac.command
-│       └── README-MAC.md
+│       └── instalar-atalho-mac.command
 ├── README.md
 └── .gitignore
 ```
 
 ---
 
-# Rodar manualmente, se necessário
+## Rodar manualmente
 
-## Backend
+Backend:
 
 ```bash
 cd apps/server
@@ -685,21 +219,7 @@ npm install
 npm run dev
 ```
 
-Backend:
-
-```txt
-http://localhost:3333
-```
-
-Teste:
-
-```txt
-http://localhost:3333/health
-```
-
----
-
-## Frontend
+Frontend:
 
 ```bash
 cd apps/web
@@ -707,31 +227,17 @@ npm install
 npm run dev
 ```
 
-Frontend:
-
-```txt
-http://localhost:5173
-```
-
-Dashboard:
-
-```txt
-http://localhost:5173/dashboard
-```
-
 ---
 
-# Atualizar projeto
+## Atualizar projeto
 
-## Pelo executor
-
-Use o botão:
+Pelo executor:
 
 ```txt
 Atualizar projeto
 ```
 
-## Manualmente
+Manual:
 
 ```bash
 git pull origin main
@@ -747,72 +253,23 @@ npm run build
 
 ---
 
-# Build
+## Segurança
 
-## Backend
-
-```bash
-cd apps/server
-npm run build
-```
-
-## Frontend
-
-```bash
-cd apps/web
-npm run build
-```
-
-O aviso de chunk grande do Vite não impede o funcionamento.
-
----
-
-# GitHub
-
-Antes de subir alterações:
-
-```bash
-git status
-```
-
-Adicionar arquivos:
-
-```bash
-git add README.md
-git add "2K Command OS.vbs"
-git add launchers/windows
-git add launchers/mac
-git add apps/server/src
-git add apps/web/src
-git add .gitignore
-git add -u
-```
-
-Commit:
-
-```bash
-git commit -m "feat: update 2k command os"
-```
-
-Push:
-
-```bash
-git push origin main
-```
-
-Nunca faça commit de:
+Nunca envie para o GitHub:
 
 ```txt
-.env
+apps/server/.env
 apps/server/data/
 node_modules/
 dist/
 obsidian-vault/
 ```
 
+Esses arquivos são locais e protegidos pelo `.gitignore`.
+
 ---
 
-# Status atual
+## Status
 
 ```txt
 Dashboard: concluído
@@ -824,13 +281,5 @@ Automações: concluído
 Obsidian: concluído
 Discord Bot: concluído
 Executor Windows: concluído
-Executor Mac: preparado para teste no macOS
+Executor macOS: preparado para teste
 ```
-
----
-
-# Observação sobre iPhone/iPad
-
-iPhone e iPad não executam este projeto localmente porque o sistema depende de backend Node.js.
-
-Para usar em iOS, será necessário hospedar o backend e o frontend online.
