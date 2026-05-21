@@ -244,3 +244,9 @@ Esses caminhos devem estar no .gitignore.
 Transformar a operação da 2K Studios em um sistema interno organizado, visual e escalável, reduzindo retrabalho manual e centralizando dados importantes em um único painel.
 
 O 2K Command OS é o início de uma base operacional própria para gestão de produção audiovisual, clientes, financeiro, documentação e automação.
+
+
+---
+
+Atualiza��o final: 2K Command OS documentado com Dashboard, Financeiro, Discord Bot, atalhos Windows e fluxo de uso local.
+
