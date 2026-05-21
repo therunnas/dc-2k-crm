@@ -1,0 +1,212 @@
+﻿.discord-finance-alerts {
+  border-color: rgba(34, 211, 238, 0.18);
+}
+
+.discord-finance-message {
+  margin-bottom: 16px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  color: #b8ebf5;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.discord-finance-top {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.discord-finance-top > div {
+  display: grid;
+  gap: 7px;
+  padding: 15px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.065);
+}
+
+.discord-finance-top svg {
+  color: #22d3ee;
+}
+
+.discord-finance-top span {
+  color: #9eabd0;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.discord-finance-top strong {
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.discord-finance-top small {
+  color: #7f8bb0;
+  font-size: 12px;
+}
+
+.discord-finance-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.discord-finance-controls label {
+  display: grid;
+  gap: 8px;
+}
+
+.discord-finance-controls label span {
+  color: #9eabd0;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.discord-finance-controls select {
+  min-height: 48px;
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.09);
+  outline: none;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(8, 13, 27, 0.94));
+  color: white;
+  border-radius: 16px;
+  padding: 13px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.discord-finance-controls select option {
+  background: #0a1020;
+  color: white;
+}
+
+.discord-finance-controls button,
+.discord-finance-actions button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 15px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #5865f2, #7c3aed 55%, #22d3ee);
+  color: white;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(88,101,242,0.22);
+}
+
+.discord-finance-controls button:disabled,
+.discord-finance-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+}
+
+.discord-finance-preview {
+  display: grid;
+  gap: 10px;
+  max-height: 430px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.discord-finance-preview article {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.055);
+}
+
+.discord-finance-preview article > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.discord-finance-preview strong {
+  font-size: 14px;
+}
+
+.discord-finance-preview p {
+  margin: 0 0 10px;
+  color: #aab4d0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.discord-finance-preview footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.discord-finance-preview footer span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: #d7dcf0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.discord-finance-priority {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.discord-finance-priority.high {
+  background: rgba(255, 92, 132, 0.14);
+  color: #ffc0cf;
+}
+
+.discord-finance-priority.medium {
+  background: rgba(255, 168, 85, 0.14);
+  color: #ffc58f;
+}
+
+.discord-finance-priority.low {
+  background: rgba(255,255,255,0.08);
+  color: #d7dcf0;
+}
+
+.discord-finance-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.discord-finance-spin {
+  animation: discordFinanceSpin 0.85s linear infinite;
+}
+
+@keyframes discordFinanceSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1100px) {
+  .discord-finance-top,
+  .discord-finance-controls,
+  .discord-finance-actions {
+    grid-template-columns: 1fr;
+  }
+}

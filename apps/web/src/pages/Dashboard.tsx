@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
 import {
   AlertTriangle,
+  ArrowDownRight,
   ArrowUpRight,
-  Banknote,
-  CalendarDays,
+  BarChart3,
+  BriefcaseBusiness,
+  CalendarClock,
+  CheckCircle2,
   CircleDollarSign,
   Clock3,
-  FileSpreadsheet,
-  Layers3,
   Loader2,
+  PieChart as PieChartIcon,
   RefreshCw,
-  TrendingDown,
   TrendingUp,
-  Wallet
+  WalletCards
 } from "lucide-react";
 import {
   Area,
@@ -32,87 +33,59 @@ import {
 
 import "./Dashboard.css";
 
-type RankingItem = {
-  nome: string;
-  total: number;
-  quantidade: number;
-};
-
-type Producao = {
-  id: string | null;
-  mesRef?: string | null;
-  projeto: string | null;
+type EntradaFinanceira = {
+  mesRef: string | null;
   grupo: string | null;
   marca: string | null;
+  projeto: string | null;
   valor: number;
-  nf?: string | number | null;
-  statusFinanceiro: string | null;
-  dataEmissao?: string | null;
+  nf: string | number | null;
+  status: string | null;
+  dataEmissao: string | null;
   previsaoRecebimento: string | null;
-  recebido?: string | null;
-  etapa: string;
-};
-
-type SaidaFinanceira = {
-  mesRef: string | null;
-  data: string | null;
-  categoriaPrincipal: string | null;
-  fornecedor: string | null;
-  descricao: string | null;
-  valor: number;
-  statusPagamento: string | null;
-  recorrencia: string | null;
+  diasParaReceber?: number | null;
+  recebido: string | null;
   observacao: string | null;
   id: string | null;
-  subcategoria: string | null;
-  natureza: string | null;
-};
-
-type DashboardFinanceiro = {
-  atualizadoEm: string;
-  resumo: {
-    totalFaturado: number;
-    totalRecebido: number;
-    totalAReceber: number;
-    totalAtrasado?: number;
-    totalPreFaturamento?: number;
-    totalSaidas: number;
-    totalSaidasPagas: number;
-    lucroCompetencia: number;
-    resultadoCaixa: number;
-    margemCompetencia: number;
-    quantidadeProjetos: number;
-    quantidadeSaidas: number;
-    quantidadeGrupos: number;
-    quantidadeMarcas: number;
-  };
-  rankings: {
-    grupos: RankingItem[];
-    marcas: RankingItem[];
-    categoriasSaida: RankingItem[];
-  };
 };
 
 type ImportSummary = {
   lastImport: {
-    arquivoOriginal: string;
-    salvoEm: string;
-    importadoEm: string;
-    entradas: number;
-    saidas: number;
-    grupos: number;
-    marcas: number;
+    arquivoOriginal?: string;
+    salvoEm?: string;
+    importadoEm?: string;
+    entradas?: number;
+    saidas?: number;
+    grupos?: number;
+    marcas?: number;
+  } | null;
+  dashboardFinanceiro: {
+    atualizadoEm: string;
+    resumo: {
+      totalFaturado: number;
+      totalRecebido: number;
+      totalAReceber: number;
+      totalAtrasado?: number;
+      totalPreFaturamento?: number;
+      totalSaidas: number;
+      totalSaidasPagas?: number;
+      lucroCompetencia: number;
+      resultadoCaixa: number;
+      margemCompetencia: number;
+      quantidadeProjetos: number;
+      quantidadeSaidas: number;
+      quantidadeGrupos: number;
+      quantidadeMarcas: number;
+    };
   } | null;
 };
 
-const chartColors = [
-  "#22d3ee",
-  "#8b5cf6",
-  "#f59e0b",
-  "#fb7185",
-  "#4ade80",
-  "#60a5fa"
-];
+type ChartItem = {
+  name: string;
+  value: number;
+};
+
+const statusColors = ["#22d3ee", "#8b5cf6", "#f59e0b", "#fb7185", "#4ade80"];
 
 function normalize(value?: string | null) {
   return String(value ?? "")
@@ -125,46 +98,29 @@ function normalize(value?: string | null) {
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
-    currency: "BRL"
+    currency: "BRL",
+    maximumFractionDigits: 2
   }).format(value || 0);
 }
 
 function formatCompactMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
     notation: "compact",
     maximumFractionDigits: 1
   }).format(value || 0);
 }
 
 function formatPercent(value: number) {
+  if (!Number.isFinite(value)) return "0%";
+
+  const percentValue = Math.abs(value) <= 1 ? value : value / 100;
+
   return new Intl.NumberFormat("pt-BR", {
     style: "percent",
-    minimumFractionDigits: 1,
     maximumFractionDigits: 1
-  }).format(value || 0);
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "Sem importação";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(date);
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  const date = parseDate(value);
-
-  if (!date) return value;
-
-  return new Intl.DateTimeFormat("pt-BR").format(date);
+  }).format(percentValue);
 }
 
 function parseDate(value?: string | null) {
@@ -189,25 +145,25 @@ function parseDate(value?: string | null) {
   return date;
 }
 
-function getSortableMonth(value?: string | null) {
-  const date = parseDate(value);
-
-  if (!date) return "9999-99";
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function getMonthLabel(value?: string | null) {
+function formatDate(value?: string | null) {
   const date = parseDate(value);
 
   if (!date) return "Sem data";
 
+  return new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "Sem importação";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
   return new Intl.DateTimeFormat("pt-BR", {
-    month: "short",
-    year: "2-digit"
-  })
-    .format(date)
-    .replace(".", "");
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
 }
 
 function getDaysFromToday(value?: string | null) {
@@ -216,42 +172,53 @@ function getDaysFromToday(value?: string | null) {
   if (!date) return null;
 
   const today = new Date();
+
   today.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
 
   return Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getStatusLabel(status?: string | null) {
-  const value = normalize(status);
+function getDateLabel(value?: string | null) {
+  const days = getDaysFromToday(value);
 
-  if (value === "pago") return "Pago";
-  if (value.includes("aguardando")) return "A receber";
-  if (value.includes("gerar")) return "Gerar NF";
-  if (value.includes("confirmar")) return "Confirmar info";
-  if (value.includes("atrasado")) return "Atrasado";
+  if (days === null) return "Sem data";
+  if (days === 0) return "Hoje";
+  if (days === 1) return "Amanhã";
+  if (days < 0) return `${Math.abs(days)} dias atrasado`;
 
-  return status || "Outros";
+  return `Em ${days} dias`;
 }
 
-function getStatusClass(status?: string | null) {
-  const value = normalize(status);
+function getMonthLabel(value?: string | null) {
+  if (!value) return "Sem mês";
 
-  if (value === "pago") return "dash-status paid";
-  if (value.includes("aguardando")) return "dash-status waiting";
-  if (value.includes("gerar")) return "dash-status nf";
-  if (value.includes("confirmar")) return "dash-status info";
-  if (value.includes("atrasado")) return "dash-status late";
+  const normalized = value.trim();
 
-  return "dash-status neutral";
+  if (/^\d{2}\/\d{4}$/.test(normalized)) {
+    return normalized;
+  }
+
+  if (/^\d{4}-\d{2}/.test(normalized)) {
+    const [year, month] = normalized.split("-");
+    return `${month}/${year}`;
+  }
+
+  const date = parseDate(normalized);
+
+  if (date) {
+    return new Intl.DateTimeFormat("pt-BR", {
+      month: "2-digit",
+      year: "numeric"
+    }).format(date);
+  }
+
+  return normalized;
 }
 
 export function Dashboard() {
-  const [dashboard, setDashboard] = useState<DashboardFinanceiro | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
-  const [producoes, setProducoes] = useState<Producao[]>([]);
-  const [saidas, setSaidas] = useState<SaidaFinanceira[]>([]);
-  const [apiOnline, setApiOnline] = useState(false);
+  const [entradas, setEntradas] = useState<EntradaFinanceira[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -260,23 +227,19 @@ export function Dashboard() {
       setLoading(true);
       setMessage("");
 
-      const [healthResponse, dashboardResponse, summaryResponse, producoesResponse, saidasResponse] =
-        await Promise.all([
-          api.get("/health"),
-          api.get<DashboardFinanceiro>("/api/dashboard/financeiro"),
-          api.get<ImportSummary>("/api/import/fluxo/summary"),
-          api.get<Producao[]>("/api/producoes"),
-          api.get<SaidaFinanceira[]>("/api/financeiro/saidas")
-        ]);
+      const [summaryResponse, entradasResponse] = await Promise.all([
+        api.get<ImportSummary>("/api/import/fluxo/summary"),
+        api.get<EntradaFinanceira[]>("/api/financeiro/entradas")
+      ]);
 
-      setApiOnline(healthResponse.data?.status === "online");
-      setDashboard(dashboardResponse.data);
       setSummary(summaryResponse.data);
-      setProducoes(producoesResponse.data);
-      setSaidas(saidasResponse.data);
+      setEntradas(entradasResponse.data ?? []);
     } catch {
-      setApiOnline(false);
-      setMessage("Erro ao carregar o Dashboard. Verifique se o backend está rodando e se a planilha foi importada.");
+      setMessage(
+        "Não foi possível carregar o Dashboard. Verifique se o backend está rodando e se a planilha foi importada."
+      );
+      setSummary(null);
+      setEntradas([]);
     } finally {
       setLoading(false);
     }
@@ -286,95 +249,124 @@ export function Dashboard() {
     loadDashboard();
   }, []);
 
-  const resumo = dashboard?.resumo;
-  const rankings = dashboard?.rankings;
+  const resumo = summary?.dashboardFinanceiro?.resumo;
 
-  const fluxoMensal = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        ordem: string;
-        mes: string;
-        faturado: number;
-        recebido: number;
-        aReceber: number;
-        saidas: number;
-        resultado: number;
-      }
-    >();
+  const financeiroCalculado = useMemo(() => {
+    const recebidos = entradas.filter((item) => normalize(item.status).includes("pago"));
 
-    function ensureMonth(date: string | null | undefined) {
-      const ordem = getSortableMonth(date);
-      const mes = getMonthLabel(date);
+    const aguardandoPagamento = entradas.filter((item) => {
+      const status = normalize(item.status);
+      return status.includes("aguardando") || status.includes("atrasado");
+    });
 
-      const current =
-        map.get(ordem) ??
-        {
-          ordem,
-          mes,
-          faturado: 0,
-          recebido: 0,
-          aReceber: 0,
-          saidas: 0,
-          resultado: 0
-        };
+    const preFaturamento = entradas.filter((item) => {
+      const status = normalize(item.status);
+      return status.includes("gerar") || status.includes("confirmar") || status.includes("nf a enviar");
+    });
 
-      map.set(ordem, current);
-      return current;
-    }
+    const vencidos = aguardandoPagamento.filter((item) => {
+      const days = getDaysFromToday(item.previsaoRecebimento);
+      return days !== null && days < 0;
+    });
 
-    for (const producao of producoes) {
-      const month = ensureMonth(
-        producao.mesRef || producao.dataEmissao || producao.previsaoRecebimento
-      );
+    return {
+      recebido: recebidos.reduce((sum, item) => sum + (item.valor || 0), 0),
+      aReceber: aguardandoPagamento.reduce((sum, item) => sum + (item.valor || 0), 0),
+      preFaturamento: preFaturamento.reduce((sum, item) => sum + (item.valor || 0), 0),
+      atrasado: vencidos.reduce((sum, item) => sum + (item.valor || 0), 0),
+      qtdAReceber: aguardandoPagamento.length,
+      qtdPreFaturamento: preFaturamento.length,
+      qtdVencidos: vencidos.length
+    };
+  }, [entradas]);
 
-      const status = normalize(producao.statusFinanceiro);
+  const totals = {
+    totalFaturado:
+      resumo?.totalFaturado ?? entradas.reduce((sum, item) => sum + (item.valor || 0), 0),
+    totalRecebido: resumo?.totalRecebido ?? financeiroCalculado.recebido,
+    totalAReceber: financeiroCalculado.aReceber || resumo?.totalAReceber || 0,
+    totalPreFaturamento:
+      financeiroCalculado.preFaturamento || resumo?.totalPreFaturamento || 0,
+    totalAtrasado: financeiroCalculado.atrasado || resumo?.totalAtrasado || 0,
+    totalSaidas: resumo?.totalSaidas ?? 0,
+    resultadoCaixa:
+      resumo?.resultadoCaixa ??
+      ((resumo?.totalRecebido ?? financeiroCalculado.recebido) - (resumo?.totalSaidas ?? 0)),
+    lucroCompetencia:
+      resumo?.lucroCompetencia ??
+      ((resumo?.totalFaturado ?? 0) - (resumo?.totalSaidas ?? 0)),
+    margemCompetencia: resumo?.margemCompetencia ?? 0,
+    quantidadeProjetos: resumo?.quantidadeProjetos ?? entradas.length,
+    quantidadeGrupos:
+      resumo?.quantidadeGrupos ??
+      new Set(entradas.map((item) => item.grupo).filter(Boolean)).size,
+    quantidadeMarcas:
+      resumo?.quantidadeMarcas ??
+      new Set(entradas.map((item) => item.marca).filter(Boolean)).size
+  };
 
-      month.faturado += producao.valor || 0;
-
-      if (status === "pago") {
-        month.recebido += producao.valor || 0;
-      }
-
-      if (status.includes("aguardando") || status.includes("atrasado")) {
-        month.aReceber += producao.valor || 0;
-      }
-    }
-
-    for (const saida of saidas) {
-      const month = ensureMonth(saida.mesRef || saida.data);
-      month.saidas += saida.valor || 0;
-    }
-
-    return Array.from(map.values())
-      .filter((item) => item.ordem !== "9999-99")
-      .sort((a, b) => a.ordem.localeCompare(b.ordem))
-      .map((item) => ({
-        ...item,
-        resultado: item.recebido - item.saidas
-      }));
-  }, [producoes, saidas]);
-
-  const statusData = useMemo(() => {
+  const monthChart = useMemo<ChartItem[]>(() => {
     const map = new Map<string, number>();
 
-    for (const item of producoes) {
-      const label = getStatusLabel(item.statusFinanceiro);
+    entradas.forEach((item) => {
+      const label = getMonthLabel(item.mesRef);
       map.set(label, (map.get(label) ?? 0) + (item.valor || 0));
-    }
+    });
 
     return Array.from(map.entries())
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [producoes]);
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(-10);
+  }, [entradas]);
+
+  const statusChart = useMemo<ChartItem[]>(() => {
+    return [
+      {
+        name: "Pago",
+        value: entradas
+          .filter((item) => normalize(item.status).includes("pago"))
+          .reduce((sum, item) => sum + (item.valor || 0), 0)
+      },
+      {
+        name: "A receber",
+        value: entradas
+          .filter((item) => {
+            const status = normalize(item.status);
+            return status.includes("aguardando") || status.includes("atrasado");
+          })
+          .reduce((sum, item) => sum + (item.valor || 0), 0)
+      },
+      {
+        name: "Pré-faturamento",
+        value: entradas
+          .filter((item) => {
+            const status = normalize(item.status);
+            return status.includes("gerar") || status.includes("confirmar") || status.includes("nf a enviar");
+          })
+          .reduce((sum, item) => sum + (item.valor || 0), 0)
+      }
+    ];
+  }, [entradas]);
+
+  const topGroups = useMemo<ChartItem[]>(() => {
+    const map = new Map<string, number>();
+
+    entradas.forEach((item) => {
+      const label = item.grupo || "Sem grupo";
+      map.set(label, (map.get(label) ?? 0) + (item.valor || 0));
+    });
+
+    return Array.from(map.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [entradas]);
 
   const proximosRecebimentos = useMemo(() => {
-    return producoes
+    return entradas
       .filter((item) => {
-        const status = normalize(item.statusFinanceiro);
-        const days = getDaysFromToday(item.previsaoRecebimento);
-
-        return status.includes("aguardando") && days !== null && days >= 0;
+        const status = normalize(item.status);
+        return status.includes("aguardando") || status.includes("atrasado");
       })
       .sort((a, b) => {
         const da = parseDate(a.previsaoRecebimento)?.getTime() ?? Number.MAX_SAFE_INTEGER;
@@ -382,279 +374,194 @@ export function Dashboard() {
 
         return da - db;
       })
-      .slice(0, 6);
-  }, [producoes]);
+      .slice(0, 7);
+  }, [entradas]);
 
-  const riscos = useMemo(() => {
-    const atrasados = producoes.filter((item) => {
-      const status = normalize(item.statusFinanceiro);
-      const days = getDaysFromToday(item.previsaoRecebimento);
-
-      if (status === "pago") return false;
-      if (status.includes("atrasado")) return true;
-
-      return status.includes("aguardando") && days !== null && days < 0;
-    });
-
-    const gerarNf = producoes.filter((item) =>
-      normalize(item.statusFinanceiro).includes("gerar")
-    );
-
-    const confirmarInfo = producoes.filter((item) =>
-      normalize(item.statusFinanceiro).includes("confirmar")
-    );
-
-    return {
-      atrasados,
-      gerarNf,
-      confirmarInfo,
-      totalAtrasado: atrasados.reduce((sum, item) => sum + item.valor, 0),
-      totalGerarNf: gerarNf.reduce((sum, item) => sum + item.valor, 0),
-      totalConfirmarInfo: confirmarInfo.reduce((sum, item) => sum + item.valor, 0)
-    };
-  }, [producoes]);
-
-  const resultadoOperacional = (resumo?.totalRecebido ?? 0) - (resumo?.totalSaidas ?? 0);
-
-  const kpis = [
-    {
-      label: "Faturado",
-      value: formatMoney(resumo?.totalFaturado ?? 0),
-      detail: `${resumo?.quantidadeProjetos ?? 0} projetos`,
-      icon: CircleDollarSign,
-      tone: "cyan"
-    },
-    {
-      label: "Recebido",
-      value: formatMoney(resumo?.totalRecebido ?? 0),
-      detail: "caixa confirmado",
-      icon: Wallet,
-      tone: "green"
-    },
-    {
-      label: "A receber",
-      value: formatMoney(resumo?.totalAReceber ?? 0),
-      detail: "aguardando pagamento",
-      icon: Clock3,
-      tone: "orange"
-    },
-    {
-      label: "Saídas",
-      value: formatMoney(resumo?.totalSaidas ?? 0),
-      detail: `${resumo?.quantidadeSaidas ?? 0} lançamentos`,
-      icon: TrendingDown,
-      tone: "red"
-    },
-    {
-      label: "Lucro competência",
-      value: formatMoney(resumo?.lucroCompetencia ?? 0),
-      detail: "faturado - saídas",
-      icon: TrendingUp,
-      tone: "purple"
-    },
-    {
-      label: "Resultado caixa",
-      value: formatMoney(resultadoOperacional),
-      detail: "recebido - saídas",
-      icon: Banknote,
-      tone: "blue"
-    }
-  ];
+  const hasData = Boolean(summary?.lastImport) || entradas.length > 0;
 
   return (
-    <div className="dash-page">
-      <section className="dash-header">
+    <div className="dashpro-page">
+      <section className="dashpro-hero">
         <div>
-          <p className="dash-overline">2K Studios · Dashboard Executivo</p>
-          <h1>Fluxo da empresa em uma visão central.</h1>
+          <p className="dashpro-overline">Dashboard / Visão executiva</p>
+          <h1>Fluxo financeiro, operação e carteira em um único painel.</h1>
           <p>
-            Resumo financeiro e operacional do Fluxo 2026: faturamento, caixa,
-            recebimentos, custos, riscos, clientes e categorias de saída.
+            Resumo consolidado da planilha Fluxo 2026 com faturamento, caixa,
+            valores a receber, saídas, margem, clientes e próximos recebimentos.
           </p>
         </div>
 
-        <div className="dash-header-actions">
-          <div className="dash-import-card">
-            <FileSpreadsheet size={18} />
-            <div>
-              <span>Última importação</span>
-              <strong>{formatDateTime(summary?.lastImport?.importadoEm)}</strong>
-            </div>
-          </div>
+        <div className="dashpro-import-card">
+          <RefreshCw size={28} />
+          <span>Última importação</span>
+          <strong>
+            {formatDateTime(summary?.lastImport?.importadoEm ?? summary?.lastImport?.salvoEm)}
+          </strong>
+          <small>{summary?.lastImport?.arquivoOriginal ?? "Nenhuma planilha carregada"}</small>
 
           <button type="button" onClick={loadDashboard}>
-            {loading ? <Loader2 className="dash-spin" size={16} /> : <RefreshCw size={16} />}
+            {loading ? <Loader2 className="dashpro-spin" size={16} /> : <RefreshCw size={16} />}
             Atualizar
           </button>
         </div>
       </section>
 
-      {message && <div className="dash-message">{message}</div>}
+      {message && <div className="dashpro-message">{message}</div>}
 
-      <section className="dash-executive-grid">
-        <div className="dash-executive-card main">
+      {!hasData && !loading && (
+        <section className="dashpro-empty-state">
+          <AlertTriangle size={28} />
+          <div>
+            <strong>Nenhum dado carregado no Dashboard.</strong>
+            <p>Abra a página Financeiro, importe a planilha e volte para o Dashboard.</p>
+          </div>
+          <a href="/financeiro">Ir para Financeiro</a>
+        </section>
+      )}
+
+      <section className="dashpro-kpi-grid">
+        <article className="dashpro-kpi-card cyan">
+          <div>
+            <span>Faturado no ano</span>
+            <strong>{formatMoney(totals.totalFaturado)}</strong>
+            <small>{totals.quantidadeProjetos} projetos considerados</small>
+          </div>
+          <CircleDollarSign />
+        </article>
+
+        <article className="dashpro-kpi-card green">
+          <div>
+            <span>Recebido no caixa</span>
+            <strong>{formatMoney(totals.totalRecebido)}</strong>
+            <small>dinheiro confirmado</small>
+          </div>
+          <ArrowUpRight />
+        </article>
+
+        <article className="dashpro-kpi-card yellow">
+          <div>
+            <span>A receber</span>
+            <strong>{formatMoney(totals.totalAReceber)}</strong>
+            <small>{financeiroCalculado.qtdAReceber} item(ns) aguardando pagamento</small>
+          </div>
+          <Clock3 />
+        </article>
+
+        <article className="dashpro-kpi-card red">
+          <div>
+            <span>Saídas no ano</span>
+            <strong>{formatMoney(totals.totalSaidas)}</strong>
+            <small>custos e despesas importadas</small>
+          </div>
+          <ArrowDownRight />
+        </article>
+      </section>
+
+      <section className="dashpro-kpi-grid secondary">
+        <article className="dashpro-mini-card">
           <span>Resultado de caixa</span>
-          <strong>{formatMoney(resultadoOperacional)}</strong>
-          <small>Recebido menos saídas totais</small>
+          <strong>{formatMoney(totals.resultadoCaixa)}</strong>
+          <small>Recebido - Saídas</small>
+        </article>
 
-          <div className="dash-executive-meta">
-            <div>
-              <span>Margem</span>
-              <strong>{formatPercent(resumo?.margemCompetencia ?? 0)}</strong>
-            </div>
+        <article className="dashpro-mini-card">
+          <span>Lucro competência</span>
+          <strong>{formatMoney(totals.lucroCompetencia)}</strong>
+          <small>Faturado - Saídas</small>
+        </article>
 
-            <div>
-              <span>Backend</span>
-              <strong>{apiOnline ? "Online" : "Offline"}</strong>
-            </div>
-          </div>
-        </div>
+        <article className="dashpro-mini-card">
+          <span>Margem</span>
+          <strong>{formatPercent(totals.margemCompetencia)}</strong>
+          <small>Lucro / Faturamento</small>
+        </article>
 
-        <div className="dash-executive-card">
-          <span>Projetos</span>
-          <strong>{resumo?.quantidadeProjetos ?? 0}</strong>
-          <small>linhas consideradas</small>
-        </div>
-
-        <div className="dash-executive-card">
-          <span>Grupos</span>
-          <strong>{resumo?.quantidadeGrupos ?? 0}</strong>
-          <small>clientes consolidados</small>
-        </div>
-
-        <div className="dash-executive-card">
-          <span>Marcas</span>
-          <strong>{resumo?.quantidadeMarcas ?? 0}</strong>
-          <small>marcas no fluxo</small>
-        </div>
+        <article className="dashpro-mini-card warning">
+          <span>Pré-faturamento</span>
+          <strong>{formatMoney(totals.totalPreFaturamento)}</strong>
+          <small>{financeiroCalculado.qtdPreFaturamento} item(ns) antes de virar cobrança</small>
+        </article>
       </section>
 
-      <section className="dash-kpi-grid">
-        {kpis.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <div className={`dash-kpi-card ${item.tone}`} key={item.label}>
-              <div>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.detail}</small>
-              </div>
-              <Icon />
-            </div>
-          );
-        })}
-      </section>
-
-      <section className="dash-main-grid">
-        <div className="dash-panel dash-panel-flow">
-          <div className="dash-panel-header">
+      <section className="dashpro-chart-grid">
+        <article className="dashpro-panel dashpro-chart-panel">
+          <div className="dashpro-panel-header">
             <div>
-              <p className="dash-overline">Fluxo mensal</p>
-              <h2>Faturado, recebido, a receber e saídas</h2>
+              <p className="dashpro-overline">Faturamento</p>
+              <h2>Volume por mês</h2>
             </div>
-            <span>{fluxoMensal.length} mês(es)</span>
+            <BarChart3 />
           </div>
 
-          <div className="dash-chart-box large">
+          <div className="dashpro-chart-box">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={fluxoMensal}>
+              <AreaChart data={monthChart}>
                 <defs>
-                  <linearGradient id="dashFaturado" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.35} />
+                  <linearGradient id="dashRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.45} />
                     <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.02} />
                   </linearGradient>
-
-                  <linearGradient id="dashRecebido" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0.02} />
-                  </linearGradient>
-
-                  <linearGradient id="dashSaidas" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#fb7185" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#fb7185" stopOpacity={0.02} />
-                  </linearGradient>
                 </defs>
-
                 <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                <XAxis dataKey="mes" stroke="#8d9bd0" tickLine={false} axisLine={false} />
+                <XAxis dataKey="name" stroke="#8d9bd0" axisLine={false} tickLine={false} />
                 <YAxis
                   stroke="#8d9bd0"
-                  tickLine={false}
                   axisLine={false}
+                  tickLine={false}
                   tickFormatter={(value) => formatCompactMoney(Number(value))}
                 />
                 <Tooltip
                   formatter={(value) => formatMoney(Number(value))}
                   contentStyle={{
                     background: "#0b1020",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "14px",
                     color: "#fff"
                   }}
                 />
-
                 <Area
                   type="monotone"
-                  dataKey="faturado"
-                  name="Faturado"
+                  dataKey="value"
+                  name="Faturamento"
                   stroke="#22d3ee"
-                  fill="url(#dashFaturado)"
                   strokeWidth={3}
-                />
-
-                <Area
-                  type="monotone"
-                  dataKey="recebido"
-                  name="Recebido"
-                  stroke="#4ade80"
-                  fill="url(#dashRecebido)"
-                  strokeWidth={3}
-                />
-
-                <Area
-                  type="monotone"
-                  dataKey="saidas"
-                  name="Saídas"
-                  stroke="#fb7185"
-                  fill="url(#dashSaidas)"
-                  strokeWidth={3}
+                  fill="url(#dashRevenueGradient)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </article>
 
-        <aside className="dash-side-column">
-          <div className="dash-panel">
-            <div className="dash-panel-header compact">
-              <div>
-                <p className="dash-overline">Composição</p>
-                <h2>Status financeiro</h2>
-              </div>
-              <Layers3 />
+        <article className="dashpro-panel dashpro-chart-panel">
+          <div className="dashpro-panel-header">
+            <div>
+              <p className="dashpro-overline">Status financeiro</p>
+              <h2>Pago, a receber e pré-faturamento</h2>
             </div>
+            <PieChartIcon />
+          </div>
 
-            <div className="dash-donut-box">
+          <div className="dashpro-pie-layout">
+            <div className="dashpro-pie-box">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={statusData}
+                    data={statusChart}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={58}
-                    outerRadius={92}
+                    innerRadius={62}
+                    outerRadius={98}
                     paddingAngle={4}
                   >
-                    {statusData.map((_, index) => (
-                      <Cell key={index} fill={chartColors[index % chartColors.length]} />
+                    {statusChart.map((_, index) => (
+                      <Cell key={index} fill={statusColors[index % statusColors.length]} />
                     ))}
                   </Pie>
                   <Tooltip
                     formatter={(value) => formatMoney(Number(value))}
                     contentStyle={{
                       background: "#0b1020",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border: "1px solid rgba(255,255,255,0.12)",
                       borderRadius: "14px",
                       color: "#fff"
                     }}
@@ -663,74 +570,44 @@ export function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="dash-legend-list">
-              {statusData.map((item, index) => (
+            <div className="dashpro-legend">
+              {statusChart.map((item, index) => (
                 <div key={item.name}>
-                  <i style={{ background: chartColors[index % chartColors.length] }} />
+                  <i style={{ background: statusColors[index % statusColors.length] }} />
                   <span>{item.name}</span>
                   <strong>{formatMoney(item.value)}</strong>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="dash-panel dash-risk-panel">
-            <div className="dash-panel-header compact">
-              <div>
-                <p className="dash-overline">Riscos</p>
-                <h2>Pontos de atenção</h2>
-              </div>
-              <AlertTriangle />
-            </div>
-
-            <div className="dash-risk-list">
-              <div>
-                <span>Atrasado</span>
-                <strong>{formatMoney(riscos.totalAtrasado)}</strong>
-                <small>{riscos.atrasados.length} item(ns)</small>
-              </div>
-
-              <div>
-                <span>Gerar NF</span>
-                <strong>{formatMoney(riscos.totalGerarNf)}</strong>
-                <small>{riscos.gerarNf.length} item(ns)</small>
-              </div>
-
-              <div>
-                <span>Confirmar info</span>
-                <strong>{formatMoney(riscos.totalConfirmarInfo)}</strong>
-                <small>{riscos.confirmarInfo.length} item(ns)</small>
-              </div>
-            </div>
-          </div>
-        </aside>
+        </article>
       </section>
 
-      <section className="dash-secondary-grid">
-        <div className="dash-panel">
-          <div className="dash-panel-header">
+      <section className="dashpro-chart-grid lower">
+        <article className="dashpro-panel dashpro-chart-panel">
+          <div className="dashpro-panel-header">
             <div>
-              <p className="dash-overline">Clientes</p>
+              <p className="dashpro-overline">Clientes</p>
               <h2>Top grupos por faturamento</h2>
             </div>
-            <ArrowUpRight />
+            <BriefcaseBusiness />
           </div>
 
-          <div className="dash-bar-box">
+          <div className="dashpro-chart-box">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={(rankings?.grupos ?? []).slice(0, 6)} layout="vertical">
+              <BarChart data={topGroups} layout="vertical">
                 <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
                 <XAxis
                   type="number"
                   stroke="#8d9bd0"
-                  tickFormatter={(value) => formatCompactMoney(Number(value))}
                   axisLine={false}
                   tickLine={false}
+                  tickFormatter={(value) => formatCompactMoney(Number(value))}
                 />
                 <YAxis
                   type="category"
-                  dataKey="nome"
-                  width={135}
+                  dataKey="name"
+                  width={150}
                   stroke="#8d9bd0"
                   axisLine={false}
                   tickLine={false}
@@ -739,77 +616,79 @@ export function Dashboard() {
                   formatter={(value) => formatMoney(Number(value))}
                   contentStyle={{
                     background: "#0b1020",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "14px",
                     color: "#fff"
                   }}
                 />
-                <Bar dataKey="total" name="Faturamento" radius={[0, 12, 12, 0]} fill="#8b5cf6" />
+                <Bar dataKey="value" name="Faturamento" fill="#8b5cf6" radius={[0, 12, 12, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </article>
 
-        <div className="dash-panel">
-          <div className="dash-panel-header">
+        <article className="dashpro-panel">
+          <div className="dashpro-panel-header">
             <div>
-              <p className="dash-overline">Custos</p>
-              <h2>Categorias de saída</h2>
+              <p className="dashpro-overline">Agenda financeira</p>
+              <h2>Próximos recebimentos</h2>
             </div>
-            <TrendingDown />
+            <CalendarClock />
           </div>
 
-          <div className="dash-ranking-list">
-            {(rankings?.categoriasSaida ?? []).slice(0, 7).map((item, index) => (
-              <div key={item.nome}>
-                <span>{index + 1}</span>
+          <div className="dashpro-receivables">
+            {proximosRecebimentos.map((item) => (
+              <div className="dashpro-receivable-row" key={`${item.id}-${item.projeto}`}>
                 <div>
-                  <strong>{item.nome}</strong>
-                  <small>{item.quantidade} lançamento(s)</small>
+                  <strong>{item.grupo || item.marca || "Sem cliente"}</strong>
+                  <span>{item.projeto || "Projeto sem nome"}</span>
                 </div>
-                <p>{formatMoney(item.total)}</p>
+
+                <div>
+                  <b>{formatMoney(item.valor)}</b>
+                  <small>
+                    {formatDate(item.previsaoRecebimento)} ·{" "}
+                    {getDateLabel(item.previsaoRecebimento)}
+                  </small>
+                </div>
               </div>
             ))}
 
-            {!(rankings?.categoriasSaida ?? []).length && (
-              <div className="dash-empty">Nenhuma categoria de saída encontrada.</div>
+            {!proximosRecebimentos.length && (
+              <div className="dashpro-empty">Nenhum recebimento aberto encontrado.</div>
             )}
           </div>
-        </div>
+        </article>
       </section>
 
-      <section className="dash-panel">
-        <div className="dash-panel-header">
-          <div>
-            <p className="dash-overline">Recebimentos</p>
-            <h2>Próximos recebimentos programados</h2>
-          </div>
-          <CalendarDays />
-        </div>
+      <section className="dashpro-health-grid">
+        <article>
+          <WalletCards />
+          <span>Caixa confirmado</span>
+          <strong>{formatMoney(totals.totalRecebido)}</strong>
+          <small>Baseado nos itens pagos da planilha.</small>
+        </article>
 
-        <div className="dash-receivable-list">
-          {proximosRecebimentos.map((item) => (
-            <div key={`${item.id}-${item.projeto}`}>
-              <div>
-                <strong>{item.projeto ?? "Projeto sem nome"}</strong>
-                <span>{item.grupo ?? "Sem grupo"} · {item.marca ?? "Sem marca"}</span>
-              </div>
+        <article>
+          <AlertTriangle />
+          <span>Vencidos</span>
+          <strong>{formatMoney(totals.totalAtrasado)}</strong>
+          <small>{financeiroCalculado.qtdVencidos} cobrança(s) com data vencida.</small>
+        </article>
 
-              <div>
-                <strong>{formatMoney(item.valor)}</strong>
-                <span>{formatDate(item.previsaoRecebimento)}</span>
-              </div>
+        <article>
+          <TrendingUp />
+          <span>Grupos ativos</span>
+          <strong>{totals.quantidadeGrupos}</strong>
+          <small>Carteira comercial importada.</small>
+        </article>
 
-              <span className={getStatusClass(item.statusFinanceiro)}>
-                {item.statusFinanceiro ?? "Sem status"}
-              </span>
-            </div>
-          ))}
-
-          {!proximosRecebimentos.length && (
-            <div className="dash-empty">Nenhum recebimento futuro encontrado.</div>
-          )}
-        </div>
+        <article>
+          <CheckCircle2 />
+          <span>Marcas mapeadas</span>
+          <strong>{totals.quantidadeMarcas}</strong>
+          <small>Marcas vinculadas aos projetos.</small>
+        </article>
       </section>
     </div>
   );

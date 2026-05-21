@@ -1,47 +1,74 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 */node_modules/
 apps/*/node_modules/
 
-# Build
+# Build output
 dist/
 build/
 .vite/
+apps/*/dist/
+apps/*/build/
+apps/*/.vite/
 
-# Environment
+# Environment / secrets
 .env
 .env.*
 !.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
 
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 
 # System
 .DS_Store
 Thumbs.db
-
-# Local data / uploads / temp
-uploads/
-tmp/
-temp/
-reports/
-*.log
-
-# Server local data generated from imported spreadsheets
-apps/server/data/
-apps/server/uploads/
-apps/server/tmp/
-
-# Obsidian local vault / private notes
-obsidian-vault/
-
-# Backups
-*.backup.css
-apps/web/src/index.backup.css
+desktop.ini
 
 # Editor
 .vscode/
 .idea/
+
+# Runtime / local data
+uploads/
+tmp/
+temp/
+reports/
+cache/
+
+# Backups
+*.backup.ts
+*.backup.tsx
+*.bak
+*.old
+
+# Local runtime data
+apps/server/data/
+obsidian-vault/
+
+# Accidental duplicated app folder
+apps/server/apps/
+
+# TypeScript build artifacts emitted inside src
+apps/server/src/**/*.js
+apps/server/src/**/*.js.map
+apps/server/src/**/*.d.ts
+apps/server/src/**/*.d.ts.map
+
+# Local runtime data
+apps/server/data/
+obsidian-vault/
+
+# Accidental duplicated app folder
+apps/server/apps/
+
+# TypeScript build artifacts emitted inside src
+apps/server/src/**/*.js
+apps/server/src/**/*.js.map
+apps/server/src/**/*.d.ts
+apps/server/src/**/*.d.ts.map

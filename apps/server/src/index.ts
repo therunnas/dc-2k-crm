@@ -1,3 +1,5 @@
+﻿import { discordRoutes } from "./routes/discordRoutes.js";
+import { startDiscordBot } from "./services/discordBot.js";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
@@ -37,8 +39,8 @@ type Task = {
   id: string;
   title: string;
   area: string;
-  priority: "Baixa" | "Média" | "Alta";
-  status: "Pendente" | "Em andamento" | "Concluída";
+  priority: "Baixa" | "MÃ©dia" | "Alta";
+  status: "Pendente" | "Em andamento" | "ConcluÃ­da";
   createdAt: string;
 };
 
@@ -158,7 +160,7 @@ function getSheetRows(workbook: XLSX.WorkBook, sheetName: string) {
 }
 
 function parseEntradas(workbook: XLSX.WorkBook): EntradaFinanceira[] {
-  const rows = getSheetRows(workbook, "💰 ENTRADAS");
+  const rows = getSheetRows(workbook, "ðŸ’° ENTRADAS");
 
   return rows
     .slice(4)
@@ -183,7 +185,7 @@ function parseEntradas(workbook: XLSX.WorkBook): EntradaFinanceira[] {
 }
 
 function parseSaidas(workbook: XLSX.WorkBook): SaidaFinanceira[] {
-  const rows = getSheetRows(workbook, "💸 SAÍDAS");
+  const rows = getSheetRows(workbook, "ðŸ’¸ SAÃDAS");
 
   return rows
     .slice(5)
@@ -290,7 +292,7 @@ function isAReceberPlanilha(item: EntradaFinanceira) {
 }
 
 function isPreFaturamento(item: EntradaFinanceira) {
-  return statusIs(item, "GERAR NF") || statusIs(item, "NF À ENVIAR") || statusIs(item, "NF A ENVIAR");
+  return statusIs(item, "GERAR NF") || statusIs(item, "NF Ã€ ENVIAR") || statusIs(item, "NF A ENVIAR");
 }
 
 function dateOnly(value: string | null) {
@@ -380,7 +382,7 @@ function buildDashboardFinanceiro(
     etapa: isRecebidoPlanilha(item)
       ? "Finalizado financeiro"
       : isAtrasadoPlanilha(item)
-        ? "Cobrança"
+        ? "CobranÃ§a"
         : isAReceberPlanilha(item)
           ? "Aguardando recebimento"
           : isPreFaturamento(item)
@@ -439,7 +441,7 @@ app.post("/api/tasks", (req, res) => {
 
   if (!title || !area || !priority) {
     return res.status(400).json({
-      error: "Campos obrigatórios: title, area e priority."
+      error: "Campos obrigatÃ³rios: title, area e priority."
     });
   }
 
@@ -469,7 +471,7 @@ app.patch("/api/tasks/:id/status", (req, res) => {
 
   if (!task) {
     return res.status(404).json({
-      error: "Tarefa não encontrada."
+      error: "Tarefa nÃ£o encontrada."
     });
   }
 
@@ -487,7 +489,7 @@ app.delete("/api/tasks/:id", (req, res) => {
 
   if (tasks.length === filteredTasks.length) {
     return res.status(404).json({
-      error: "Tarefa não encontrada."
+      error: "Tarefa nÃ£o encontrada."
     });
   }
 
@@ -513,8 +515,8 @@ app.post("/api/import/fluxo", upload.single("file"), (req, res) => {
 
     const entradas = parseEntradas(workbook);
     const saidas = parseSaidas(workbook);
-    const grupos = parseGenericRanking(workbook, "👥 GRUPOS", 3);
-    const marcas = parseGenericRanking(workbook, "🎨 MARCAS", 3);
+    const grupos = parseGenericRanking(workbook, "ðŸ‘¥ GRUPOS", 3);
+    const marcas = parseGenericRanking(workbook, "ðŸŽ¨ MARCAS", 3);
     const dashboardFinanceiro = buildDashboardFinanceiro(entradas, saidas);
 
     const importFilePath = path.join(
@@ -608,7 +610,7 @@ app.post("/api/obsidian/note", async (req, res) => {
 
     if (!title || !content) {
       return res.status(400).json({
-        error: "Título e conteúdo obrigatórios"
+        error: "TÃ­tulo e conteÃºdo obrigatÃ³rios"
       });
     }
 
@@ -645,6 +647,14 @@ Criado pelo 2K Command OS
   }
 });
 
+
+
+app.use("/api/discord", discordRoutes);
+
+startDiscordBot();
+
 app.listen(PORT, () => {
   console.log(`Server online em http://localhost:${PORT}`);
 });
+
+

@@ -1,20 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
 import {
+  Activity,
   AlertTriangle,
   ArrowUpRight,
   Bot,
   CalendarClock,
   CheckCircle2,
-  CircleDollarSign,
   Clock3,
   Database,
   FileSpreadsheet,
   FileText,
-  Link2,
   Loader2,
   RefreshCw,
-  Rocket,
   ServerCog,
   Sparkles,
   Workflow,
@@ -23,12 +21,14 @@ import {
 
 import "./Automacoes.css";
 
+type TaskStatus = "Pendente" | "Em andamento" | "Concluída";
+
 type Task = {
   id: string;
   title: string;
   area: string;
   priority: string;
-  status: "Pendente" | "Em andamento" | "Concluída";
+  status: TaskStatus;
   createdAt?: string;
 };
 
@@ -67,6 +67,7 @@ type ImportSummary = {
       totalAtrasado?: number;
       totalPreFaturamento?: number;
       totalSaidas: number;
+      totalSaidasPagas?: number;
       lucroCompetencia: number;
       resultadoCaixa: number;
       margemCompetencia: number;
@@ -77,6 +78,21 @@ type ImportSummary = {
     };
   } | null;
 };
+
+type AutomationAction = {
+  id: string;
+  type: "Cobrança" | "Follow-up" | "Gerar NF" | "Confirmar info" | "Conferência";
+  title: string;
+  client: string;
+  value: number;
+  status: string | null;
+  date: string | null;
+  priority: "Alta" | "Média" | "Baixa";
+  area: string;
+  description: string;
+};
+
+type ViewMode = "acoes" | "saude" | "roadmap";
 
 function normalize(value?: string | null) {
   return String(value ?? "")
@@ -91,6 +107,16 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "BRL"
   }).format(value || 0);
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "Sem data";
+
+  const date = parseDate(value);
+
+  if (!date) return value;
+
+  return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
 function formatDateTime(value?: string | null) {
@@ -115,11 +141,16 @@ function parseDate(value?: string | null) {
     return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
   }
 
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(value);
+
+  if (br) {
+    return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) return null;
 
-  date.setHours(0, 0, 0, 0);
   return date;
 }
 
@@ -129,23 +160,43 @@ function getDaysFromToday(value?: string | null) {
   if (!date) return null;
 
   const today = new Date();
+
   today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
 
-  const diff = date.getTime() - today.getTime();
-
-  return Math.round(diff / (1000 * 60 * 60 * 24));
+  return Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getStatusClass(status?: string | null) {
-  const value = normalize(status);
+function getDateLabel(value?: string | null) {
+  const days = getDaysFromToday(value);
 
-  if (value === "pago") return "auto-status paid";
-  if (value.includes("aguardando")) return "auto-status waiting";
-  if (value.includes("gerar")) return "auto-status nf";
-  if (value.includes("confirmar")) return "auto-status info";
-  if (value.includes("atrasado")) return "auto-status late";
+  if (days === null) return "Sem data";
+  if (days === 0) return "Hoje";
+  if (days === 1) return "Amanhã";
+  if (days === -1) return "Ontem";
+  if (days < 0) return `${Math.abs(days)} dias atrasado`;
 
-  return "auto-status neutral";
+  return `Em ${days} dias`;
+}
+
+function getActionClass(type: AutomationAction["type"]) {
+  if (type === "Cobrança") return "autoops-action-type danger";
+  if (type === "Follow-up") return "autoops-action-type warning";
+  if (type === "Gerar NF") return "autoops-action-type cyan";
+  if (type === "Confirmar info") return "autoops-action-type purple";
+
+  return "autoops-action-type neutral";
+}
+
+function getPriorityClass(priority: AutomationAction["priority"]) {
+  if (priority === "Alta") return "autoops-priority high";
+  if (priority === "Média") return "autoops-priority medium";
+
+  return "autoops-priority low";
+}
+
+function getHealthClass(ok: boolean) {
+  return ok ? "autoops-health-dot online" : "autoops-health-dot offline";
 }
 
 export function Automacoes() {
@@ -154,6 +205,9 @@ export function Automacoes() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [entradas, setEntradas] = useState<EntradaFinanceira[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
+  const [createdActionIds, setCreatedActionIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("acoes");
   const [message, setMessage] = useState("");
 
   async function loadAutomationData() {
@@ -181,348 +235,532 @@ export function Automacoes() {
     }
   }
 
+  async function createTaskFromAction(action: AutomationAction) {
+    try {
+      setCreatingTaskId(action.id);
+      setMessage("");
+
+      await api.post("/api/tasks", {
+        title: `[${action.type}] ${action.title}`,
+        area: action.area,
+        priority: action.priority
+      });
+
+      setCreatedActionIds((current) => [...current, action.id]);
+
+      const tasksResponse = await api.get<Task[]>("/api/tasks");
+      setTasks(tasksResponse.data);
+
+      setMessage("Tarefa criada com sucesso a partir da automação.");
+    } catch {
+      setMessage("Erro ao criar tarefa. Verifique o backend.");
+    } finally {
+      setCreatingTaskId(null);
+    }
+  }
+
   useEffect(() => {
     loadAutomationData();
   }, []);
 
   const resumo = summary?.dashboardFinanceiro?.resumo;
 
+  const openTasks = tasks.filter((task) => task.status !== "Concluída");
   const pendingTasks = tasks.filter((task) => task.status === "Pendente");
   const progressTasks = tasks.filter((task) => task.status === "Em andamento");
 
-  const gerarNf = entradas.filter((item) =>
-    normalize(item.status).includes("gerar")
-  );
+  const automationActions = useMemo<AutomationAction[]>(() => {
+    const actions: AutomationAction[] = [];
 
-  const confirmarInfo = entradas.filter((item) =>
-    normalize(item.status).includes("confirmar")
-  );
+    for (const item of entradas) {
+      const status = normalize(item.status);
+      const days = getDaysFromToday(item.previsaoRecebimento);
+      const title = item.projeto || "Projeto sem nome";
+      const client = item.grupo || "Sem grupo";
+      const value = item.valor || 0;
 
-  const atrasados = entradas.filter((item) => {
-    const status = normalize(item.status);
-    const days = getDaysFromToday(item.previsaoRecebimento);
+      if (status.includes("aguardando") && days !== null && days < 0) {
+        actions.push({
+          id: `cobranca-${item.id}-${item.projeto}`,
+          type: "Cobrança",
+          title,
+          client,
+          value,
+          status: item.status,
+          date: item.previsaoRecebimento,
+          priority: "Alta",
+          area: "Financeiro",
+          description: "Recebimento aguardando pagamento com data vencida."
+        });
+      }
 
-    if (status.includes("pago")) return false;
-    if (status.includes("atrasado")) return true;
+      if (status.includes("atrasado")) {
+        actions.push({
+          id: `atrasado-${item.id}-${item.projeto}`,
+          type: "Cobrança",
+          title,
+          client,
+          value,
+          status: item.status,
+          date: item.previsaoRecebimento,
+          priority: "Alta",
+          area: "Financeiro",
+          description: "Item marcado como atrasado na planilha."
+        });
+      }
 
-    return status.includes("aguardando") && days !== null && days < 0;
-  });
+      if (status.includes("aguardando") && days !== null && days >= 0 && days <= 7) {
+        actions.push({
+          id: `followup-${item.id}-${item.projeto}`,
+          type: "Follow-up",
+          title,
+          client,
+          value,
+          status: item.status,
+          date: item.previsaoRecebimento,
+          priority: "Média",
+          area: "Financeiro",
+          description: "Recebimento próximo. Acompanhar antes do vencimento."
+        });
+      }
 
-  const followUp7Dias = entradas.filter((item) => {
-    const status = normalize(item.status);
-    const days = getDaysFromToday(item.previsaoRecebimento);
+      if (status.includes("gerar") || status.includes("nf a enviar")) {
+        actions.push({
+          id: `nf-${item.id}-${item.projeto}`,
+          type: "Gerar NF",
+          title,
+          client,
+          value,
+          status: item.status,
+          date: item.dataEmissao,
+          priority: "Média",
+          area: "Financeiro",
+          description: "Projeto em etapa de emissão ou envio de nota fiscal."
+        });
+      }
 
-    return (
-      status.includes("aguardando") &&
-      days !== null &&
-      days >= 0 &&
-      days <= 7
+      if (status.includes("confirmar")) {
+        actions.push({
+          id: `confirmar-${item.id}-${item.projeto}`,
+          type: "Confirmar info",
+          title,
+          client,
+          value,
+          status: item.status,
+          date: item.dataEmissao,
+          priority: "Baixa",
+          area: "Operacional",
+          description: "Informações pendentes antes de avançar o fluxo."
+        });
+      }
+    }
+
+    const unique = actions.filter(
+      (action, index, array) => array.findIndex((item) => item.id === action.id) === index
     );
-  });
 
-  const automationQueue = useMemo(() => {
-    const queue = [
-      ...atrasados.map((item) => ({
-        type: "Cobrança",
-        title: item.projeto,
-        client: item.grupo,
-        value: item.valor,
-        status: item.status,
-        date: item.previsaoRecebimento,
-        priority: "Alta"
-      })),
-      ...followUp7Dias.map((item) => ({
-        type: "Follow-up",
-        title: item.projeto,
-        client: item.grupo,
-        value: item.valor,
-        status: item.status,
-        date: item.previsaoRecebimento,
-        priority: "Média"
-      })),
-      ...gerarNf.map((item) => ({
-        type: "Gerar NF",
-        title: item.projeto,
-        client: item.grupo,
-        value: item.valor,
-        status: item.status,
-        date: item.dataEmissao,
-        priority: "Média"
-      })),
-      ...confirmarInfo.map((item) => ({
-        type: "Confirmar info",
-        title: item.projeto,
-        client: item.grupo,
-        value: item.valor,
-        status: item.status,
-        date: item.dataEmissao,
-        priority: "Baixa"
-      }))
-    ];
+    return unique.sort((a, b) => {
+      const priorityWeight = {
+        Alta: 0,
+        Média: 1,
+        Baixa: 2
+      };
 
-    return queue.slice(0, 18);
-  }, [atrasados, confirmarInfo, followUp7Dias, gerarNf]);
+      const priorityDiff = priorityWeight[a.priority] - priorityWeight[b.priority];
 
-  const automationCards = [
+      if (priorityDiff !== 0) return priorityDiff;
+
+      const da = parseDate(a.date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const db = parseDate(b.date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+
+      return da - db;
+    });
+  }, [entradas]);
+
+  const criticalActions = automationActions.filter((action) => action.priority === "Alta");
+  const mediumActions = automationActions.filter((action) => action.priority === "Média");
+  const lowActions = automationActions.filter((action) => action.priority === "Baixa");
+
+  const systemHealth = [
     {
-      title: "API local",
+      label: "API local",
       value: apiOnline ? "Online" : "Offline",
-      description: "Backend Express em localhost:3333",
-      icon: ServerCog,
-      state: apiOnline ? "good" : "bad"
+      description: "Backend em localhost:3333",
+      ok: apiOnline,
+      icon: ServerCog
     },
     {
-      title: "Planilha",
+      label: "Planilha",
       value: summary?.lastImport ? "Importada" : "Pendente",
       description: formatDateTime(summary?.lastImport?.importadoEm),
-      icon: FileSpreadsheet,
-      state: summary?.lastImport ? "good" : "warn"
+      ok: Boolean(summary?.lastImport),
+      icon: FileSpreadsheet
     },
     {
-      title: "Tarefas abertas",
-      value: String(pendingTasks.length + progressTasks.length),
+      label: "Entradas",
+      value: String(summary?.lastImport?.entradas ?? entradas.length),
+      description: "Registros financeiros de entrada",
+      ok: entradas.length > 0,
+      icon: Database
+    },
+    {
+      label: "Tarefas abertas",
+      value: String(openTasks.length),
       description: `${pendingTasks.length} pendente(s), ${progressTasks.length} em andamento`,
-      icon: Workflow,
-      state: pendingTasks.length + progressTasks.length > 0 ? "warn" : "good"
-    },
-    {
-      title: "Alertas financeiros",
-      value: String(atrasados.length + followUp7Dias.length + gerarNf.length),
-      description: "Cobrança, follow-up e emissão de NF",
-      icon: AlertTriangle,
-      state: atrasados.length > 0 ? "bad" : "warn"
+      ok: openTasks.length === 0,
+      icon: Workflow
     }
   ];
 
-  const runbookItems = [
+  const roadmapItems = [
     {
-      title: "Importação financeira",
-      description: "Planilha Fluxo 2026 alimentando dashboard, financeiro, clientes, produções e agenda.",
+      title: "Importação pelo portal",
+      description: "Upload da planilha pelo Financeiro e persistência no backend.",
       done: Boolean(summary?.lastImport)
     },
     {
-      title: "Monitoramento de cobrança",
-      description: "Itens aguardando pagamento e atrasados são detectados pela data de previsão.",
-      done: entradas.length > 0
-    },
-    {
-      title: "Geração de tarefas",
-      description: "Tarefas manuais já estão funcionando no dashboard.",
+      title: "Dashboard executivo",
+      description: "Visão geral de faturamento, caixa, saídas, margem e riscos.",
       done: true
     },
     {
-      title: "Obsidian",
-      description: "Notas podem ser criadas via backend; falta uma tela operacional mais completa.",
-      done: false
+      title: "Produções operacionais",
+      description: "Pipeline, tabela e análise dos projetos importados.",
+      done: true
     },
     {
-      title: "Discord",
-      description: "Widget do servidor já está integrado no dashboard.",
+      title: "CRM de clientes",
+      description: "Carteira de grupos, marcas e projetos vinculados.",
+      done: true
+    },
+    {
+      title: "Agenda de follow-up",
+      description: "Prazos, atrasos, próximos recebimentos e timeline.",
+      done: true
+    },
+    {
+      title: "Criação de tarefas por automação",
+      description: "Converter alerta financeiro em tarefa operacional.",
+      done: true
+    },
+    {
+      title: "Obsidian operacional",
+      description: "Gerar notas estruturadas na base de conhecimento.",
       done: true
     },
     {
       title: "Google Sheets automático",
-      description: "Futuro: puxar dados direto da nuvem sem upload manual.",
+      description: "Futuro: sincronizar dados sem upload manual.",
+      done: false
+    },
+    {
+      title: "Notificações Discord",
+      description: "Futuro: enviar alertas do Command OS para canais internos.",
       done: false
     }
   ];
 
   return (
-    <div className="auto-page">
-      <section className="auto-hero">
+    <div className="autoops-page">
+      <section className="autoops-header">
         <div>
-          <p className="auto-overline">Automações / Command Center</p>
-          <h1>Central de rotinas, alertas e integrações operacionais.</h1>
+          <p className="autoops-overline">Automações / Central de Ações</p>
+          <h1>Alertas operacionais convertidos em tarefas reais.</h1>
           <p>
-            Monitore a saúde do sistema, acompanhe alertas financeiros, veja a fila
-            de ações sugeridas e organize os próximos passos de automação da 2K Studios.
+            Esta tela detecta pendências financeiras e operacionais, mostra a saúde do sistema
+            e permite criar tarefas diretamente a partir dos alertas encontrados na planilha.
           </p>
-
-          <div className="auto-tags">
-            <span>API</span>
-            <span>Planilha</span>
-            <span>Financeiro</span>
-            <span>Obsidian</span>
-            <span>Discord</span>
-          </div>
         </div>
 
-        <div className="auto-hero-card">
+        <div className="autoops-header-card">
           <Bot size={30} />
-          <span>Fila operacional</span>
-          <strong>{automationQueue.length}</strong>
-          <small>ações detectadas automaticamente</small>
+          <span>Ações detectadas</span>
+          <strong>{automationActions.length}</strong>
+          <small>{criticalActions.length} críticas · {mediumActions.length} médias</small>
         </div>
       </section>
 
-      {message && <div className="auto-message">{message}</div>}
+      {message && <div className="autoops-message">{message}</div>}
 
-      <section className="auto-card-grid">
-        {automationCards.map((card) => {
-          const Icon = card.icon;
+      <section className="autoops-kpi-grid">
+        <div className="autoops-kpi-card danger">
+          <div>
+            <span>Críticas</span>
+            <strong>{criticalActions.length}</strong>
+            <small>cobranças e atrasos</small>
+          </div>
+          <AlertTriangle />
+        </div>
 
-          return (
-            <div className={`auto-status-card ${card.state}`} key={card.title}>
-              <div>
-                <span>{card.title}</span>
-                <strong>{card.value}</strong>
-                <small>{card.description}</small>
-              </div>
-              <Icon />
-            </div>
-          );
-        })}
+        <div className="autoops-kpi-card warning">
+          <div>
+            <span>Médias</span>
+            <strong>{mediumActions.length}</strong>
+            <small>follow-up e NF</small>
+          </div>
+          <Clock3 />
+        </div>
+
+        <div className="autoops-kpi-card info">
+          <div>
+            <span>Baixas</span>
+            <strong>{lowActions.length}</strong>
+            <small>confirmações e revisão</small>
+          </div>
+          <Sparkles />
+        </div>
+
+        <div className="autoops-kpi-card success">
+          <div>
+            <span>Tarefas abertas</span>
+            <strong>{openTasks.length}</strong>
+            <small>criadas ou em andamento</small>
+          </div>
+          <Workflow />
+        </div>
       </section>
 
-      <section className="auto-main-grid">
-        <div className="auto-panel auto-queue-panel">
-          <div className="auto-panel-header">
-            <div>
-              <p className="auto-overline">Fila de automação</p>
-              <h2>Ações sugeridas pelo sistema</h2>
+      <section className="autoops-tabs">
+        <button
+          type="button"
+          className={viewMode === "acoes" ? "active" : ""}
+          onClick={() => setViewMode("acoes")}
+        >
+          <Zap size={16} />
+          Ações
+        </button>
+
+        <button
+          type="button"
+          className={viewMode === "saude" ? "active" : ""}
+          onClick={() => setViewMode("saude")}
+        >
+          <Activity size={16} />
+          Saúde do sistema
+        </button>
+
+        <button
+          type="button"
+          className={viewMode === "roadmap" ? "active" : ""}
+          onClick={() => setViewMode("roadmap")}
+        >
+          <CheckCircle2 size={16} />
+          Roadmap
+        </button>
+      </section>
+
+      {viewMode === "acoes" && (
+        <section className="autoops-main-grid">
+          <div className="autoops-panel autoops-actions-panel">
+            <div className="autoops-panel-header">
+              <div>
+                <p className="autoops-overline">Fila operacional</p>
+                <h2>Ações sugeridas pela planilha</h2>
+              </div>
+
+              <button type="button" onClick={loadAutomationData}>
+                {loading ? <Loader2 className="autoops-spin" size={16} /> : <RefreshCw size={16} />}
+                Atualizar
+              </button>
             </div>
 
-            <button className="auto-icon-button" type="button" onClick={loadAutomationData}>
-              {loading ? <Loader2 className="auto-spin" size={16} /> : <RefreshCw size={16} />}
+            <div className="autoops-action-list">
+              {loading && <div className="autoops-empty">Carregando automações...</div>}
+
+              {!loading &&
+                automationActions.map((action) => {
+                  const alreadyCreated = createdActionIds.includes(action.id);
+
+                  return (
+                    <article className="autoops-action-row" key={action.id}>
+                      <div className="autoops-action-main">
+                        <div className="autoops-action-title">
+                          <span className={getActionClass(action.type)}>
+                            {action.type}
+                          </span>
+
+                          <span className={getPriorityClass(action.priority)}>
+                            {action.priority}
+                          </span>
+                        </div>
+
+                        <strong>{action.title}</strong>
+                        <p>{action.description}</p>
+
+                        <div className="autoops-action-meta">
+                          <span>{action.client}</span>
+                          <span>{formatMoney(action.value)}</span>
+                          <span>{formatDate(action.date)} · {getDateLabel(action.date)}</span>
+                          <span>{action.status ?? "Sem status"}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={alreadyCreated || creatingTaskId === action.id}
+                        onClick={() => createTaskFromAction(action)}
+                      >
+                        {creatingTaskId === action.id ? (
+                          <>
+                            <Loader2 className="autoops-spin" size={15} />
+                            Criando
+                          </>
+                        ) : alreadyCreated ? (
+                          <>
+                            <CheckCircle2 size={15} />
+                            Criada
+                          </>
+                        ) : (
+                          <>
+                            <Workflow size={15} />
+                            Criar tarefa
+                          </>
+                        )}
+                      </button>
+                    </article>
+                  );
+                })}
+
+              {!loading && !automationActions.length && (
+                <div className="autoops-empty">
+                  Nenhuma ação crítica encontrada. A operação está limpa para os filtros atuais.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <aside className="autoops-side-stack">
+            <div className="autoops-panel">
+              <div className="autoops-panel-header">
+                <div>
+                  <p className="autoops-overline">Resumo financeiro</p>
+                  <h2>Base de alertas</h2>
+                </div>
+                <FileSpreadsheet />
+              </div>
+
+              <div className="autoops-metric-list">
+                <div>
+                  <span>A receber</span>
+                  <strong>{formatMoney(resumo?.totalAReceber ?? 0)}</strong>
+                </div>
+
+                <div>
+                  <span>Pré-faturamento</span>
+                  <strong>{formatMoney(resumo?.totalPreFaturamento ?? 0)}</strong>
+                </div>
+
+                <div>
+                  <span>Atrasado</span>
+                  <strong>{formatMoney(resumo?.totalAtrasado ?? 0)}</strong>
+                </div>
+
+                <div>
+                  <span>Última importação</span>
+                  <strong>{formatDateTime(summary?.lastImport?.importadoEm)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="autoops-panel">
+              <div className="autoops-panel-header">
+                <div>
+                  <p className="autoops-overline">Atalhos</p>
+                  <h2>Ir para módulos</h2>
+                </div>
+                <ArrowUpRight />
+              </div>
+
+              <div className="autoops-shortcuts">
+                <a href="/financeiro">
+                  <FileSpreadsheet size={16} />
+                  Financeiro
+                  <ArrowUpRight size={14} />
+                </a>
+
+                <a href="/agenda">
+                  <CalendarClock size={16} />
+                  Agenda
+                  <ArrowUpRight size={14} />
+                </a>
+
+                <a href="/producoes">
+                  <Database size={16} />
+                  Produções
+                  <ArrowUpRight size={14} />
+                </a>
+
+                <a href="/obsidian">
+                  <FileText size={16} />
+                  Obsidian
+                  <ArrowUpRight size={14} />
+                </a>
+              </div>
+            </div>
+          </aside>
+        </section>
+      )}
+
+      {viewMode === "saude" && (
+        <section className="autoops-panel">
+          <div className="autoops-panel-header">
+            <div>
+              <p className="autoops-overline">Diagnóstico</p>
+              <h2>Saúde do sistema local</h2>
+            </div>
+
+            <button type="button" onClick={loadAutomationData}>
+              {loading ? <Loader2 className="autoops-spin" size={16} /> : <RefreshCw size={16} />}
+              Verificar
             </button>
           </div>
 
-          <div className="auto-queue-list">
-            {automationQueue.map((item, index) => (
-              <div className="auto-queue-row" key={`${item.type}-${item.title}-${index}`}>
-                <div className="auto-queue-icon">
-                  {item.type === "Cobrança" && <AlertTriangle size={16} />}
-                  {item.type === "Follow-up" && <Clock3 size={16} />}
-                  {item.type === "Gerar NF" && <FileText size={16} />}
-                  {item.type === "Confirmar info" && <Sparkles size={16} />}
-                </div>
+          <div className="autoops-health-grid">
+            {systemHealth.map((item) => {
+              const Icon = item.icon;
 
-                <div className="auto-queue-content">
-                  <div className="auto-queue-title">
-                    <strong>{item.type}</strong>
-                    <span className={`auto-priority ${item.priority.toLowerCase()}`}>
-                      {item.priority}
-                    </span>
-                  </div>
+              return (
+                <div className="autoops-health-card" key={item.label}>
+                  <div className={getHealthClass(item.ok)} />
 
-                  <p>{item.title ?? "Projeto sem nome"}</p>
+                  <Icon />
 
-                  <div className="auto-queue-meta">
-                    <span>{item.client ?? "Sem grupo"}</span>
-                    <span>{formatMoney(item.value)}</span>
-                    <span className={getStatusClass(item.status)}>
-                      {item.status ?? "Sem status"}
-                    </span>
+                  <div>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <small>{item.description}</small>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-                <div className="auto-queue-date">
-                  <span>{item.date ? formatDateTime(item.date).split(",")[0] : "Sem data"}</span>
+      {viewMode === "roadmap" && (
+        <section className="autoops-panel">
+          <div className="autoops-panel-header">
+            <div>
+              <p className="autoops-overline">Roadmap técnico</p>
+              <h2>Checklist das automações do Command OS</h2>
+            </div>
+            <CheckCircle2 />
+          </div>
+
+          <div className="autoops-roadmap-grid">
+            {roadmapItems.map((item) => (
+              <div className={item.done ? "autoops-roadmap-card done" : "autoops-roadmap-card"} key={item.title}>
+                <div>
+                  {item.done ? <CheckCircle2 size={18} /> : <Clock3 size={18} />}
                 </div>
+
+                <strong>{item.title}</strong>
+                <p>{item.description}</p>
               </div>
             ))}
-
-            {!automationQueue.length && (
-              <div className="auto-empty">
-                Nenhuma ação crítica encontrada no momento.
-              </div>
-            )}
           </div>
-        </div>
-
-        <aside className="auto-side-stack">
-          <div className="auto-panel">
-            <div className="auto-panel-header">
-              <div>
-                <p className="auto-overline">Financeiro</p>
-                <h2>Resumo dos alertas</h2>
-              </div>
-              <CircleDollarSign />
-            </div>
-
-            <div className="auto-metric-list">
-              <div>
-                <span>A receber</span>
-                <strong>{formatMoney(resumo?.totalAReceber ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Atrasados detectados</span>
-                <strong>{atrasados.length}</strong>
-              </div>
-
-              <div>
-                <span>Gerar NF</span>
-                <strong>{gerarNf.length}</strong>
-              </div>
-
-              <div>
-                <span>Confirmar info</span>
-                <strong>{confirmarInfo.length}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="auto-panel">
-            <div className="auto-panel-header">
-              <div>
-                <p className="auto-overline">Atalhos</p>
-                <h2>Ações rápidas</h2>
-              </div>
-              <Rocket />
-            </div>
-
-            <div className="auto-shortcuts">
-              <a href="/financeiro">
-                <FileSpreadsheet size={16} />
-                Importar planilha
-                <ArrowUpRight size={14} />
-              </a>
-
-              <a href="/agenda">
-                <CalendarClock size={16} />
-                Ver agenda operacional
-                <ArrowUpRight size={14} />
-              </a>
-
-              <a href="/producoes">
-                <Database size={16} />
-                Conferir produções
-                <ArrowUpRight size={14} />
-              </a>
-
-              <a href="/clientes">
-                <Link2 size={16} />
-                Ver CRM de clientes
-                <ArrowUpRight size={14} />
-              </a>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <section className="auto-panel">
-        <div className="auto-panel-header">
-          <div>
-            <p className="auto-overline">Roadmap técnico</p>
-            <h2>Checklist das automações do Command OS</h2>
-          </div>
-          <Zap />
-        </div>
-
-        <div className="auto-runbook-grid">
-          {runbookItems.map((item) => (
-            <div className={item.done ? "auto-runbook done" : "auto-runbook"} key={item.title}>
-              <div>
-                {item.done ? <CheckCircle2 size={18} /> : <Clock3 size={18} />}
-              </div>
-
-              <strong>{item.title}</strong>
-              <p>{item.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

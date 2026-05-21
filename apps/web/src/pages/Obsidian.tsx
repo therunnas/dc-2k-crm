@@ -1,10 +1,11 @@
-import { useMemo, useState, type FormEvent } from "react";
+﻿import { useMemo, useState, type FormEvent } from "react";
 import { api } from "../services/api";
 import {
   BookOpenText,
   Bot,
   Building2,
   CheckCircle2,
+  Clipboard,
   ClipboardList,
   FileText,
   FolderOpen,
@@ -12,8 +13,10 @@ import {
   Loader2,
   NotebookPen,
   Save,
+  SearchCheck,
   Sparkles,
-  Workflow
+  Workflow,
+  type LucideIcon
 } from "lucide-react";
 
 import "./Obsidian.css";
@@ -29,11 +32,22 @@ type TemplateKey =
   | "livre";
 
 type ObsidianResponse = {
-  success: boolean;
-  file: string;
+  success?: boolean;
+  file?: string;
+  path?: string;
+  message?: string;
 };
 
-const folders = [
+type TemplateItem = {
+  key: TemplateKey;
+  title: string;
+  description: string;
+  folder: string;
+  icon: LucideIcon;
+  tag: string;
+};
+
+const folderOptions = [
   "00 - Inbox",
   "01 - Diário Operacional",
   "02 - Clientes",
@@ -49,70 +63,76 @@ const folders = [
   "12 - Templates"
 ];
 
-const templates: Array<{
-  key: TemplateKey;
-  title: string;
-  description: string;
-  folder: string;
-  icon: typeof FileText;
-}> = [
+const templates: TemplateItem[] = [
   {
     key: "diario",
     title: "Diário operacional",
-    description: "Registro do dia, decisões, pendências e próximos passos.",
+    description: "Registro diário da empresa, pendências, decisões e próximos passos.",
     folder: "01 - Diário Operacional",
-    icon: NotebookPen
+    icon: NotebookPen,
+    tag: "diario-operacional"
   },
   {
     key: "cliente",
     title: "Cliente",
-    description: "Resumo comercial, histórico, demandas e oportunidades.",
+    description: "Histórico comercial, contatos, demandas, oportunidades e follow-up.",
     folder: "02 - Clientes",
-    icon: Building2
+    icon: Building2,
+    tag: "cliente"
   },
   {
     key: "producao",
     title: "Produção",
-    description: "Briefing, status, equipe, entrega e observações do job.",
+    description: "Briefing, status, equipe, entregas, prazos e observações do projeto.",
     folder: "03 - Produções",
-    icon: Layers3
+    icon: Layers3,
+    tag: "producao"
   },
   {
     key: "financeiro",
     title: "Financeiro",
-    description: "Notas sobre cobrança, NF, pagamento, custos e caixa.",
+    description: "Registro de cobrança, NF, pagamento, custo, caixa ou conferência.",
     folder: "04 - Financeiro",
-    icon: ClipboardList
+    icon: ClipboardList,
+    tag: "financeiro"
   },
   {
     key: "problema",
     title: "Problema & Solução",
-    description: "Documentação de erro, causa, solução e prevenção.",
+    description: "Documentação de erro, causa, solução aplicada e prevenção.",
     folder: "05 - Problemas & Soluções",
-    icon: Workflow
+    icon: Workflow,
+    tag: "problema-solucao"
   },
   {
     key: "automacao",
     title: "Automação",
-    description: "Ideias, fluxos, integrações, prompts e melhorias com IA.",
+    description: "Ideias, fluxos, integrações, prompts, IA e melhorias internas.",
     folder: "09 - IA & Automação",
-    icon: Bot
+    icon: Bot,
+    tag: "automacao"
   },
   {
     key: "agenda",
-    title: "Agenda / Reunião",
+    title: "Agenda / Follow-up",
     description: "Pauta, ata, responsáveis, decisões e próximos passos.",
     folder: "10 - Reuniões",
-    icon: BookOpenText
+    icon: BookOpenText,
+    tag: "agenda"
   },
   {
     key: "livre",
     title: "Nota livre",
-    description: "Anotação simples enviada para Inbox.",
+    description: "Nota simples enviada para Inbox, sem estrutura rígida.",
     folder: "00 - Inbox",
-    icon: FileText
+    icon: FileText,
+    tag: "nota-livre"
   }
 ];
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function todayBR() {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -121,20 +141,36 @@ function todayBR() {
   }).format(new Date());
 }
 
-function buildTemplateContent(template: TemplateKey, notes: string) {
-  const baseFooter = `
+function sanitizeTitle(value: string) {
+  return value.trim().replace(/[\\/:*?"<>|]/g, "-");
+}
 
----
-Fonte: 2K Command OS
-Criado em: ${todayBR()}
-`;
+function buildFrontmatter(template: TemplateItem, title: string, folder: string) {
+  return `---
+title: "${title || "Sem título"}"
+tipo: "${template.title}"
+pasta: "${folder}"
+tags:
+  - 2k-command-os
+  - ${template.tag}
+criado_em: "${todayISO()}"
+origem: "2K Command OS"
+---`;
+}
 
-  const cleanNotes = notes.trim() || "Sem observações adicionais.";
+function buildTemplateContent(template: TemplateItem, title: string, folder: string, notes: string) {
+  const content = notes.trim() || "Sem observações adicionais.";
 
-  if (template === "diario") {
-    return `## Resumo do dia
+  const frontmatter = buildFrontmatter(template, title, folder);
 
-${cleanNotes}
+  if (template.key === "diario") {
+    return `${frontmatter}
+
+# ${title || "Diário operacional"}
+
+## Resumo do dia
+
+${content}
 
 ## Decisões tomadas
 
@@ -151,13 +187,21 @@ ${cleanNotes}
 ## Pontos de atenção
 
 - 
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  if (template === "cliente") {
-    return `## Visão geral do cliente
+  if (template.key === "cliente") {
+    return `${frontmatter}
 
-${cleanNotes}
+# ${title || "Cliente"}
+
+## Visão geral
+
+${content}
 
 ## Contatos e responsáveis
 
@@ -178,13 +222,21 @@ ${cleanNotes}
 ## Próxima ação
 
 - 
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  if (template === "producao") {
-    return `## Resumo da produção
+  if (template.key === "producao") {
+    return `${frontmatter}
 
-${cleanNotes}
+# ${title || "Produção"}
+
+## Resumo da produção
+
+${content}
 
 ## Cliente / Grupo
 
@@ -217,21 +269,30 @@ ${cleanNotes}
 ## Próxima ação
 
 - 
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  if (template === "financeiro") {
-    return `## Registro financeiro
+  if (template.key === "financeiro") {
+    return `${frontmatter}
 
-${cleanNotes}
+# ${title || "Registro financeiro"}
+
+## Contexto financeiro
+
+${content}
 
 ## Tipo
 
 - [ ] Cobrança
-- [ ] NF
+- [ ] Nota fiscal
 - [ ] Pagamento
 - [ ] Custo
 - [ ] Conferência
+- [ ] Fluxo de caixa
 
 ## Valor
 
@@ -248,13 +309,21 @@ R$
 ## Próxima ação
 
 - 
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  if (template === "problema") {
-    return `## Problema identificado
+  if (template.key === "problema") {
+    return `${frontmatter}
 
-${cleanNotes}
+# ${title || "Problema & Solução"}
+
+## Problema identificado
+
+${content}
 
 ## Impacto
 
@@ -277,13 +346,21 @@ ${cleanNotes}
 - [ ] Aberto
 - [ ] Em análise
 - [ ] Resolvido
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  if (template === "automacao") {
-    return `## Ideia / Automação
+  if (template.key === "automacao") {
+    return `${frontmatter}
 
-${cleanNotes}
+# ${title || "Automação"}
+
+## Ideia / Automação
+
+${content}
 
 ## Objetivo
 
@@ -299,11 +376,13 @@ ${cleanNotes}
 
 ## Ferramentas envolvidas
 
-- 2K Command OS
-- Obsidian
-- Planilha
-- Discord
-- IA
+- [ ] 2K Command OS
+- [ ] Obsidian
+- [ ] Planilha
+- [ ] Discord
+- [ ] IA
+- [ ] Google Sheets
+- [ ] API externa
 
 ## Status
 
@@ -315,13 +394,21 @@ ${cleanNotes}
 ## Próximo passo
 
 - 
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  if (template === "agenda") {
-    return `## Pauta
+  if (template.key === "agenda") {
+    return `${frontmatter}
 
-${cleanNotes}
+# ${title || "Agenda / Follow-up"}
+
+## Pauta
+
+${content}
 
 ## Participantes
 
@@ -342,10 +429,23 @@ ${cleanNotes}
 ## Próxima reunião / follow-up
 
 - 
-${baseFooter}`;
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
   }
 
-  return `${cleanNotes}${baseFooter}`;
+  return `${frontmatter}
+
+# ${title || "Nota livre"}
+
+${content}
+
+## Registro
+
+Criado em: ${todayBR()}
+`;
 }
 
 export function Obsidian() {
@@ -357,26 +457,30 @@ export function Obsidian() {
   const [message, setMessage] = useState("");
   const [createdFile, setCreatedFile] = useState("");
 
-  const activeTemplate = templates.find((item) => item.key === selectedTemplate) ?? templates[0];
+  const activeTemplate =
+    templates.find((template) => template.key === selectedTemplate) ?? templates[0];
 
-  const preview = useMemo(() => {
-    return buildTemplateContent(selectedTemplate, notes);
-  }, [selectedTemplate, notes]);
+  const markdownPreview = useMemo(() => {
+    return buildTemplateContent(activeTemplate, title, folder, notes);
+  }, [activeTemplate, title, folder, notes]);
 
-  function selectTemplate(template: TemplateKey) {
-    const item = templates.find((entry) => entry.key === template);
+  function selectTemplate(templateKey: TemplateKey) {
+    const template = templates.find((item) => item.key === templateKey);
 
-    setSelectedTemplate(template);
+    if (!template) return;
 
-    if (item) {
-      setFolder(item.folder);
-    }
+    setSelectedTemplate(template.key);
+    setFolder(template.folder);
+    setMessage("");
+    setCreatedFile("");
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
-    if (!title.trim()) {
+    const cleanTitle = sanitizeTitle(title);
+
+    if (!cleanTitle) {
       setMessage("Informe um título para a nota.");
       return;
     }
@@ -387,42 +491,46 @@ export function Obsidian() {
       setCreatedFile("");
 
       const response = await api.post<ObsidianResponse>("/api/obsidian/note", {
-        title: title.trim(),
+        title: cleanTitle,
         folder,
-        content: preview
+        content: markdownPreview
       });
 
-      setCreatedFile(response.data.file);
+      const filePath = response.data.file ?? response.data.path ?? `${folder}/${cleanTitle}.md`;
+
+      setCreatedFile(filePath);
       setMessage("Nota criada com sucesso no Obsidian.");
       setTitle("");
       setNotes("");
     } catch {
-      setMessage("Erro ao criar nota. Verifique o backend e a rota do Obsidian.");
+      setMessage("Erro ao criar nota. Verifique o backend e o caminho do vault do Obsidian.");
     } finally {
       setLoading(false);
     }
   }
 
+  async function copyPreview() {
+    try {
+      await navigator.clipboard.writeText(markdownPreview);
+      setMessage("Markdown copiado para a área de transferência.");
+    } catch {
+      setMessage("Não foi possível copiar o Markdown.");
+    }
+  }
+
   return (
-    <div className="obs-page">
-      <section className="obs-hero">
+    <div className="obsops-page">
+      <section className="obsops-header">
         <div>
-          <p className="obs-overline">Obsidian / Base de Conhecimento</p>
+          <p className="obsops-overline">Obsidian / Base de Conhecimento</p>
           <h1>Documentação operacional conectada ao Command OS.</h1>
           <p>
             Crie notas estruturadas para clientes, produções, financeiro, problemas,
-            automações, reuniões e registros diários sem sair do painel.
+            automações, agenda e rotina diária diretamente pelo portal.
           </p>
-
-          <div className="obs-tags">
-            <span>2K-OS</span>
-            <span>Documentação</span>
-            <span>Processos</span>
-            <span>Conhecimento</span>
-          </div>
         </div>
 
-        <div className="obs-hero-card">
+        <div className="obsops-header-card">
           <Sparkles size={30} />
           <span>Template ativo</span>
           <strong>{activeTemplate.title}</strong>
@@ -430,14 +538,21 @@ export function Obsidian() {
         </div>
       </section>
 
-      <section className="obs-template-grid">
+      {message && (
+        <div className={createdFile ? "obsops-message success" : "obsops-message"}>
+          {createdFile ? <CheckCircle2 size={16} /> : <FolderOpen size={16} />}
+          <span>{message}</span>
+        </div>
+      )}
+
+      <section className="obsops-template-grid">
         {templates.map((template) => {
           const Icon = template.icon;
 
           return (
             <button
               type="button"
-              className={`obs-template-card ${
+              className={`obsops-template-card ${
                 selectedTemplate === template.key ? "active" : ""
               }`}
               key={template.key}
@@ -451,11 +566,11 @@ export function Obsidian() {
         })}
       </section>
 
-      <section className="obs-main-grid">
-        <form className="obs-panel obs-form" onSubmit={handleSubmit}>
-          <div className="obs-panel-header">
+      <section className="obsops-main-grid">
+        <form className="obsops-panel obsops-form" onSubmit={handleSubmit}>
+          <div className="obsops-panel-header">
             <div>
-              <p className="obs-overline">Criar nota</p>
+              <p className="obsops-overline">Criar nota</p>
               <h2>Enviar para o Obsidian</h2>
             </div>
             <Save />
@@ -471,84 +586,116 @@ export function Obsidian() {
           </label>
 
           <label>
-            <span>Pasta do Obsidian</span>
+            <span>Pasta do vault</span>
             <select value={folder} onChange={(event) => setFolder(event.target.value)}>
-              {folders.map((item) => (
+              {folderOptions.map((item) => (
                 <option key={item}>{item}</option>
               ))}
             </select>
           </label>
 
           <label>
-            <span>Observações principais</span>
+            <span>Conteúdo base</span>
             <textarea
-              placeholder="Digite aqui o conteúdo base. O Command OS vai organizar no template selecionado."
+              placeholder="Escreva o conteúdo principal. O Command OS organiza dentro do template selecionado."
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              rows={10}
+              rows={12}
             />
           </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="obs-spin" size={18} />
-                Criando nota...
-              </>
-            ) : (
-              <>
-                <Save size={18} />
-                Criar nota no Obsidian
-              </>
-            )}
-          </button>
+          <div className="obsops-actions">
+            <button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="obsops-spin" size={18} />
+                  Criando nota...
+                </>
+              ) : (
+                <>
+                  <Save size={18} />
+                  Criar nota
+                </>
+              )}
+            </button>
 
-          {message && (
-            <div className={createdFile ? "obs-message success" : "obs-message"}>
-              {createdFile ? <CheckCircle2 size={16} /> : <FolderOpen size={16} />}
-              <span>{message}</span>
-            </div>
-          )}
+            <button type="button" className="secondary" onClick={copyPreview}>
+              <Clipboard size={18} />
+              Copiar Markdown
+            </button>
+          </div>
 
           {createdFile && (
-            <div className="obs-created-file">
+            <div className="obsops-created-file">
               <span>Arquivo criado</span>
               <strong>{createdFile}</strong>
             </div>
           )}
         </form>
 
-        <aside className="obs-panel obs-preview">
-          <div className="obs-panel-header">
+        <aside className="obsops-panel obsops-preview">
+          <div className="obsops-panel-header">
             <div>
-              <p className="obs-overline">Preview</p>
-              <h2>Conteúdo que será salvo</h2>
+              <p className="obsops-overline">Preview</p>
+              <h2>Markdown final</h2>
             </div>
             <FileText />
           </div>
 
-          <pre>{`# ${title || "Título da nota"}
-
-${preview}`}</pre>
+          <pre>{markdownPreview}</pre>
         </aside>
       </section>
 
-      <section className="obs-panel">
-        <div className="obs-panel-header">
-          <div>
-            <p className="obs-overline">Estrutura recomendada</p>
-            <h2>Pastas do vault 2K-OS</h2>
+      <section className="obsops-grid-two">
+        <div className="obsops-panel">
+          <div className="obsops-panel-header">
+            <div>
+              <p className="obsops-overline">Estrutura</p>
+              <h2>Pastas do vault 2K-OS</h2>
+            </div>
+            <FolderOpen />
           </div>
-          <FolderOpen />
+
+          <div className="obsops-folder-grid">
+            {folderOptions.map((item) => (
+              <div key={item}>
+                <FolderOpen size={16} />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="obs-folder-grid">
-          {folders.map((item) => (
-            <div key={item}>
-              <FolderOpen size={16} />
-              <span>{item}</span>
+        <div className="obsops-panel">
+          <div className="obsops-panel-header">
+            <div>
+              <p className="obsops-overline">Validação</p>
+              <h2>Como testar</h2>
             </div>
-          ))}
+            <SearchCheck />
+          </div>
+
+          <div className="obsops-checklist">
+            <div>
+              <CheckCircle2 size={16} />
+              <span>Escolha um template.</span>
+            </div>
+
+            <div>
+              <CheckCircle2 size={16} />
+              <span>Preencha título e conteúdo base.</span>
+            </div>
+
+            <div>
+              <CheckCircle2 size={16} />
+              <span>Clique em Criar nota.</span>
+            </div>
+
+            <div>
+              <CheckCircle2 size={16} />
+              <span>Confirme se o arquivo .md apareceu no vault.</span>
+            </div>
+          </div>
         </div>
       </section>
     </div>

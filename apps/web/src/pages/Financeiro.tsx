@@ -1,22 +1,18 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+﻿import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { api } from "../services/api";
 import {
   AlertTriangle,
+  ArrowDownRight,
   ArrowUpRight,
-  Banknote,
   CheckCircle2,
   CircleDollarSign,
   Clock3,
   FileSpreadsheet,
-  Filter,
   Loader2,
-  Receipt,
   RefreshCw,
   Search,
-  TrendingDown,
-  TrendingUp,
   Upload,
-  XCircle
+  WalletCards
 } from "lucide-react";
 
 import "./Financeiro.css";
@@ -37,90 +33,76 @@ type EntradaFinanceira = {
   id: string | null;
 };
 
-type SaidaFinanceira = {
-  mesRef: string | null;
-  data: string | null;
-  categoriaPrincipal: string | null;
-  fornecedor: string | null;
-  descricao: string | null;
-  valor: number;
-  statusPagamento: string | null;
-  recorrencia: string | null;
-  observacao: string | null;
-  id: string | null;
-  subcategoria: string | null;
-  natureza: string | null;
-};
-
-type RankingItem = {
-  nome: string;
-  total: number;
-  quantidade: number;
-};
-
-type DashboardFinanceiro = {
-  atualizadoEm: string;
-  resumo: {
-    totalFaturado: number;
-    totalRecebido: number;
-    totalAReceber: number;
-    totalAtrasado?: number;
-    totalPreFaturamento?: number;
-    totalSaidas: number;
-    totalSaidasPagas: number;
-    lucroCompetencia: number;
-    resultadoCaixa: number;
-    margemCompetencia: number;
-    quantidadeProjetos: number;
-    quantidadeSaidas: number;
-    quantidadeGrupos: number;
-    quantidadeMarcas: number;
-  };
-  rankings: {
-    grupos: RankingItem[];
-    marcas: RankingItem[];
-    categoriasSaida: RankingItem[];
-  };
-};
+type SaidaFinanceira = Record<string, unknown>;
 
 type ImportSummary = {
   lastImport: {
-    arquivoOriginal: string;
-    salvoEm: string;
-    importadoEm: string;
-    entradas: number;
-    saidas: number;
-    grupos: number;
-    marcas: number;
+    arquivoOriginal?: string;
+    salvoEm?: string;
+    importadoEm?: string;
+    entradas?: number;
+    saidas?: number;
+    grupos?: number;
+    marcas?: number;
   } | null;
-  dashboardFinanceiro: DashboardFinanceiro | null;
+  dashboardFinanceiro: {
+    atualizadoEm: string;
+    resumo: {
+      totalFaturado: number;
+      totalRecebido: number;
+      totalAReceber: number;
+      totalAtrasado?: number;
+      totalPreFaturamento?: number;
+      totalSaidas: number;
+      totalSaidasPagas?: number;
+      lucroCompetencia: number;
+      resultadoCaixa: number;
+      margemCompetencia: number;
+      quantidadeProjetos: number;
+      quantidadeSaidas: number;
+      quantidadeGrupos: number;
+      quantidadeMarcas: number;
+    };
+  } | null;
 };
 
-type FinanceTab = "entradas" | "saidas" | "conferencia";
+type TabMode = "entradas" | "saidas" | "conferencia";
+
+function normalize(value?: string | number | null) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+
+  if (typeof value === "string") {
+    const cleaned = value
+      .replace(/[R$\s]/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".");
+
+    const parsed = Number(cleaned);
+
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function getString(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL"
   }).format(value || 0);
-}
-
-function formatPercent(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "percent",
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  }).format(value || 0);
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
 function formatDateTime(value?: string | null) {
@@ -136,94 +118,115 @@ function formatDateTime(value?: string | null) {
   }).format(date);
 }
 
-function normalize(value?: string | null) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
-    .toLowerCase()
-    .trim();
+function isPago(status: string | null) {
+  const normalized = normalize(status);
+  return normalized === "pago" || normalized.includes(" pago");
 }
 
-function getEntradaStatusClass(status?: string | null) {
-  const value = normalize(status);
+function isAguardandoPagamento(status: string | null) {
+  const normalized = normalize(status);
 
-  if (value === "pago") return "finops-status paid";
-  if (value.includes("aguardando")) return "finops-status waiting";
-  if (value.includes("gerar")) return "finops-status nf";
-  if (value.includes("confirmar")) return "finops-status info";
-  if (value.includes("atrasado")) return "finops-status late";
-
-  return "finops-status neutral";
+  return (
+    normalized.includes("aguardando pagamento") ||
+    normalized.includes("atrasado") ||
+    normalized.includes("vencido")
+  );
 }
 
-function getSaidaStatusClass(status?: string | null) {
-  const value = normalize(status);
+function isGerarNf(status: string | null) {
+  const normalized = normalize(status);
 
-  if (value.includes("pago")) return "finops-status paid";
-  if (value.includes("pendente")) return "finops-status waiting";
-  if (value.includes("atrasado")) return "finops-status late";
+  return (
+    normalized.includes("gerar nf") ||
+    normalized.includes("nf a enviar") ||
+    normalized.includes("emitir nf") ||
+    normalized.includes("enviar nf")
+  );
+}
 
-  return "finops-status neutral";
+function isConfirmarInfo(status: string | null) {
+  const normalized = normalize(status);
+
+  return (
+    normalized.includes("confirmar info") ||
+    normalized.includes("confirmar") ||
+    normalized.includes("validar")
+  );
+}
+
+function getSaidaValor(item: SaidaFinanceira) {
+  const possibleKeys = ["valor", "Valor", "total", "Total", "valorPago", "Valor Pago"];
+
+  for (const key of possibleKeys) {
+    if (key in item) return getNumber(item[key]);
+  }
+
+  return 0;
+}
+
+function getSaidaDescricao(item: SaidaFinanceira) {
+  const possibleKeys = ["descricao", "Descrição", "fornecedor", "Fornecedor", "categoria", "Categoria"];
+
+  for (const key of possibleKeys) {
+    if (key in item) return getString(item[key]);
+  }
+
+  return "Saída sem descrição";
 }
 
 export function Financeiro() {
-  const [file, setFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [entradas, setEntradas] = useState<EntradaFinanceira[]>([]);
   const [saidas, setSaidas] = useState<SaidaFinanceira[]>([]);
-  const [activeTab, setActiveTab] = useState<FinanceTab>("entradas");
+  const [tab, setTab] = useState<TabMode>("entradas");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Todos");
-  const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
 
-  const dashboard = summary?.dashboardFinanceiro;
-  const resumo = dashboard?.resumo;
-
-  async function loadFinancialData() {
+  async function loadData() {
     try {
-      setLoadingData(true);
+      setLoading(true);
+      setMessage("");
 
-      const [summaryResponse, entradasResponse, saidasResponse] = await Promise.all([
+      const [summaryResponse, entradasResponse] = await Promise.all([
         api.get<ImportSummary>("/api/import/fluxo/summary"),
-        api.get<EntradaFinanceira[]>("/api/financeiro/entradas"),
-        api.get<SaidaFinanceira[]>("/api/financeiro/saidas")
+        api.get<EntradaFinanceira[]>("/api/financeiro/entradas")
       ]);
 
       setSummary(summaryResponse.data);
-      setEntradas(entradasResponse.data);
-      setSaidas(saidasResponse.data);
+      setEntradas(entradasResponse.data ?? []);
+
+      try {
+        const saidasResponse = await api.get<SaidaFinanceira[]>("/api/financeiro/saidas");
+        setSaidas(saidasResponse.data ?? []);
+      } catch {
+        setSaidas([]);
+      }
     } catch {
-      setMessage("Erro ao carregar financeiro. Verifique se o backend está rodando.");
+      setMessage("Erro ao carregar dados financeiros. Verifique se o backend está rodando.");
+      setSummary(null);
+      setEntradas([]);
+      setSaidas([]);
     } finally {
-      setLoadingData(false);
+      setLoading(false);
     }
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const selectedFile = event.target.files?.[0];
-
-    if (!selectedFile) return;
-
-    setFile(selectedFile);
-    setMessage("");
-  }
-
-  async function handleUpload(event: FormEvent) {
-    event.preventDefault();
-
-    if (!file) {
-      setMessage("Selecione uma planilha .xlsx antes de importar.");
+  async function importFile() {
+    if (!selectedFile) {
+      setMessage("Selecione uma planilha antes de importar.");
       return;
     }
 
     try {
-      setLoading(true);
-      setMessage("Importando planilha...");
+      setImporting(true);
+      setMessage("");
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", selectedFile);
 
       await api.post("/api/import/fluxo", formData, {
         headers: {
@@ -232,105 +235,116 @@ export function Financeiro() {
       });
 
       setMessage("Planilha importada com sucesso.");
-      setFile(null);
-
-      await loadFinancialData();
+      setSelectedFile(null);
+      await loadData();
     } catch {
-      setMessage("Erro ao importar planilha. Verifique o backend e o formato do arquivo.");
+      setMessage("Erro ao importar planilha. Verifique se o arquivo está correto.");
     } finally {
-      setLoading(false);
+      setImporting(false);
     }
   }
 
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setSelectedFile(event.target.files?.[0] ?? null);
+  }
+
   useEffect(() => {
-    loadFinancialData();
+    loadData();
   }, []);
 
-  const entradaStatuses = useMemo(() => {
-    const values = entradas
-      .map((item) => item.status)
-      .filter(Boolean)
-      .map(String);
+  const resumo = summary?.dashboardFinanceiro?.resumo;
 
-    return ["Todos", ...Array.from(new Set(values)).sort()];
+  const statusResumo = useMemo(() => {
+    const pagos = entradas.filter((item) => isPago(item.status));
+    const aguardando = entradas.filter((item) => isAguardandoPagamento(item.status));
+    const gerarNf = entradas.filter((item) => isGerarNf(item.status));
+    const confirmarInfo = entradas.filter((item) => isConfirmarInfo(item.status));
+
+    return {
+      pagos: pagos.reduce((sum, item) => sum + getNumber(item.valor), 0),
+      aguardando: aguardando.reduce((sum, item) => sum + getNumber(item.valor), 0),
+      gerarNf: gerarNf.reduce((sum, item) => sum + getNumber(item.valor), 0),
+      confirmarInfo: confirmarInfo.reduce((sum, item) => sum + getNumber(item.valor), 0),
+      qtdPagos: pagos.length,
+      qtdAguardando: aguardando.length,
+      qtdGerarNf: gerarNf.length,
+      qtdConfirmarInfo: confirmarInfo.length
+    };
   }, [entradas]);
 
-  const saidaStatuses = useMemo(() => {
-    const values = saidas
-      .map((item) => item.statusPagamento)
-      .filter(Boolean)
-      .map(String);
-
-    return ["Todos", ...Array.from(new Set(values)).sort()];
-  }, [saidas]);
-
-  const availableStatuses = activeTab === "entradas" ? entradaStatuses : saidaStatuses;
+  const totais = {
+    faturado:
+      resumo?.totalFaturado ??
+      entradas.reduce((sum, item) => sum + getNumber(item.valor), 0),
+    recebido:
+      resumo?.totalRecebido ??
+      statusResumo.pagos,
+    aReceber:
+      resumo?.totalAReceber ??
+      statusResumo.aguardando,
+    saidas:
+      resumo?.totalSaidas ??
+      saidas.reduce((sum, item) => sum + getSaidaValor(item), 0),
+    entradasLidas: summary?.lastImport?.entradas ?? entradas.length,
+    saidasLidas: summary?.lastImport?.saidas ?? saidas.length,
+    grupos: summary?.lastImport?.grupos ?? resumo?.quantidadeGrupos ?? 0,
+    marcas: summary?.lastImport?.marcas ?? resumo?.quantidadeMarcas ?? 0
+  };
 
   const filteredEntradas = useMemo(() => {
-    return entradas
-      .filter((item) => {
-        const text = normalize(
-          `${item.id} ${item.grupo} ${item.marca} ${item.projeto} ${item.status} ${item.nf}`
-        );
+    const searchTerm = normalize(search);
 
-        const matchesSearch = !search || text.includes(normalize(search));
-        const matchesStatus = statusFilter === "Todos" || item.status === statusFilter;
+    return entradas.filter((item) => {
+      const content = normalize(
+        [
+          item.projeto,
+          item.grupo,
+          item.marca,
+          item.status,
+          item.nf,
+          item.id
+        ].join(" ")
+      );
 
-        return matchesSearch && matchesStatus;
-      })
-      .sort((a, b) => {
-        const da = new Date(a.mesRef || a.dataEmissao || a.previsaoRecebimento || "").getTime();
-        const db = new Date(b.mesRef || b.dataEmissao || b.previsaoRecebimento || "").getTime();
+      const matchesSearch = !searchTerm || content.includes(searchTerm);
 
-        return (Number.isNaN(da) ? 0 : da) - (Number.isNaN(db) ? 0 : db);
-      });
+      const normalizedStatus = normalize(item.status);
+
+      const matchesStatus =
+        statusFilter === "todos" ||
+        normalizedStatus.includes(normalize(statusFilter));
+
+      return matchesSearch && matchesStatus;
+    });
   }, [entradas, search, statusFilter]);
 
   const filteredSaidas = useMemo(() => {
-    return saidas
-      .filter((item) => {
-        const text = normalize(
-          `${item.id} ${item.fornecedor} ${item.descricao} ${item.categoriaPrincipal} ${item.subcategoria} ${item.statusPagamento}`
-        );
+    const searchTerm = normalize(search);
 
-        const matchesSearch = !search || text.includes(normalize(search));
-        const matchesStatus =
-          statusFilter === "Todos" || item.statusPagamento === statusFilter;
+    return saidas.filter((item) => {
+      const content = normalize(JSON.stringify(item));
+      return !searchTerm || content.includes(searchTerm);
+    });
+  }, [saidas, search]);
 
-        return matchesSearch && matchesStatus;
-      })
-      .sort((a, b) => {
-        const da = new Date(a.mesRef || a.data || "").getTime();
-        const db = new Date(b.mesRef || b.data || "").getTime();
+  const statusOptions = useMemo(() => {
+    const uniqueStatuses = Array.from(
+      new Set(
+        entradas
+          .map((item) => item.status)
+          .filter(Boolean)
+          .map((item) => String(item))
+      )
+    );
 
-        return (Number.isNaN(da) ? 0 : da) - (Number.isNaN(db) ? 0 : db);
-      });
-  }, [saidas, search, statusFilter]);
-
-  const filteredEntradaTotal = filteredEntradas.reduce((sum, item) => sum + item.valor, 0);
-  const filteredSaidaTotal = filteredSaidas.reduce((sum, item) => sum + item.valor, 0);
-
-  const pagos = entradas.filter((item) => normalize(item.status) === "pago");
-  const aguardando = entradas.filter((item) =>
-    normalize(item.status).includes("aguardando")
-  );
-  const gerarNf = entradas.filter((item) => normalize(item.status).includes("gerar"));
-  const confirmarInfo = entradas.filter((item) =>
-    normalize(item.status).includes("confirmar")
-  );
-
-  const saidasPagas = saidas.filter((item) =>
-    normalize(item.statusPagamento).includes("pago")
-  );
-  const saidasPendentes = saidas.filter(
-    (item) => !normalize(item.statusPagamento).includes("pago")
-  );
+    return uniqueStatuses.sort((a, b) => a.localeCompare(b));
+  }, [entradas]);
 
   return (
-    <div className="finops-page">
-      <section className="finops-hero">
+    <div className="finance-page">
+      <section className="finance-hero">
         <div>
-          <p className="finops-overline">Financeiro / Controle</p>
+          <p className="finance-overline">Financeiro / Controle</p>
           <h1>Centro financeiro conectado à planilha Fluxo 2026.</h1>
           <p>
             Importe, confira e analise entradas, saídas, recebimentos, emissão de NF,
@@ -338,453 +352,290 @@ export function Financeiro() {
           </p>
         </div>
 
-        <div className="finops-import-card">
+        <div className="finance-import-info">
           <FileSpreadsheet size={28} />
           <span>Última importação</span>
-          <strong>{formatDateTime(summary?.lastImport?.importadoEm)}</strong>
-          <small>{summary?.lastImport?.arquivoOriginal ?? "Nenhum arquivo importado"}</small>
+          <strong>{formatDateTime(summary?.lastImport?.importadoEm ?? summary?.lastImport?.salvoEm)}</strong>
+          <small>{summary?.lastImport?.arquivoOriginal ?? "Nenhuma planilha carregada"}</small>
         </div>
       </section>
 
-      <section className="finops-top-grid">
-        <form className="finops-upload-card" onSubmit={handleUpload}>
-          <div className="finops-panel-header">
+      {message && <div className="finance-message">{message}</div>}
+
+      <section className="finance-top-grid">
+        <div className="finance-panel">
+          <div className="finance-panel-header">
             <div>
-              <p className="finops-overline">Upload XLSX</p>
+              <p className="finance-overline">Upload XLSX</p>
               <h2>Importar planilha</h2>
             </div>
             <Upload />
           </div>
 
-          <label className="finops-file-input">
+          <label className="finance-upload-box">
             <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
-            <FileSpreadsheet size={24} />
-            <strong>{file ? file.name : "Selecionar planilha"}</strong>
+            <FileSpreadsheet />
+            <strong>{selectedFile ? selectedFile.name : "Selecionar planilha"}</strong>
             <span>A importação substitui os dados atuais pelos dados da planilha.</span>
           </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="spin" size={18} />
-                Importando...
-              </>
-            ) : (
-              <>
-                <Upload size={18} />
-                Importar para o Command OS
-              </>
-            )}
+          <button className="finance-primary-button" type="button" onClick={importFile} disabled={importing}>
+            {importing ? <Loader2 className="finance-spin" size={16} /> : <Upload size={16} />}
+            Importar para o Command OS
           </button>
+        </div>
 
-          {message && <div className="finops-message">{message}</div>}
-        </form>
-
-        <div className="finops-panel">
-          <div className="finops-panel-header">
+        <div className="finance-panel">
+          <div className="finance-panel-header">
             <div>
-              <p className="finops-overline">Status</p>
+              <p className="finance-overline">Status</p>
               <h2>Dados carregados</h2>
             </div>
 
-            <button className="finops-icon-button" type="button" onClick={loadFinancialData}>
-              {loadingData ? <Loader2 className="spin" size={16} /> : <RefreshCw size={16} />}
+            <button type="button" onClick={loadData}>
+              {loading ? <Loader2 className="finance-spin" size={16} /> : <RefreshCw size={16} />}
             </button>
           </div>
 
-          <div className="finops-data-status">
+          <div className="finance-loaded-grid">
             <div>
               <span>Entradas lidas</span>
-              <strong>{entradas.length}</strong>
+              <strong>{totais.entradasLidas}</strong>
             </div>
 
             <div>
               <span>Saídas lidas</span>
-              <strong>{saidas.length}</strong>
+              <strong>{totais.saidasLidas}</strong>
             </div>
 
             <div>
               <span>Grupos</span>
-              <strong>{resumo?.quantidadeGrupos ?? 0}</strong>
+              <strong>{totais.grupos}</strong>
             </div>
 
             <div>
               <span>Marcas</span>
-              <strong>{resumo?.quantidadeMarcas ?? 0}</strong>
+              <strong>{totais.marcas}</strong>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="finops-kpi-grid">
-        <div className="finops-kpi-card">
+      <section className="finance-kpi-grid">
+        <article className="finance-kpi-card">
           <div>
             <span>Faturado no ano</span>
-            <strong>{formatMoney(resumo?.totalFaturado ?? 0)}</strong>
-            <small>{resumo?.quantidadeProjetos ?? 0} projetos considerados</small>
+            <strong>{formatMoney(totais.faturado)}</strong>
+            <small>{entradas.length} projetos considerados</small>
           </div>
           <CircleDollarSign />
-        </div>
+        </article>
 
-        <div className="finops-kpi-card">
+        <article className="finance-kpi-card">
           <div>
             <span>Recebido no ano</span>
-            <strong>{formatMoney(resumo?.totalRecebido ?? 0)}</strong>
+            <strong>{formatMoney(totais.recebido)}</strong>
             <small>Caixa confirmado</small>
           </div>
-          <TrendingUp />
-        </div>
+          <ArrowUpRight />
+        </article>
 
-        <div className="finops-kpi-card">
+        <article className="finance-kpi-card">
           <div>
             <span>A receber</span>
-            <strong>{formatMoney(resumo?.totalAReceber ?? 0)}</strong>
+            <strong>{formatMoney(totais.aReceber)}</strong>
             <small>Aguardando pagamento + atrasado</small>
           </div>
           <ArrowUpRight />
-        </div>
+        </article>
 
-        <div className="finops-kpi-card danger">
+        <article className="finance-kpi-card orange">
           <div>
             <span>Saídas no ano</span>
-            <strong>{formatMoney(resumo?.totalSaidas ?? 0)}</strong>
-            <small>{resumo?.quantidadeSaidas ?? 0} lançamentos</small>
+            <strong>{formatMoney(totais.saidas)}</strong>
+            <small>{saidas.length} lançamento(s)</small>
           </div>
-          <TrendingDown />
-        </div>
+          <ArrowDownRight />
+        </article>
       </section>
 
-      <section className="finops-kpi-grid secondary">
-        <div className="finops-mini-card">
+      <section className="finance-status-grid">
+        <article>
           <CheckCircle2 />
           <span>Pagos</span>
-          <strong>{formatMoney(pagos.reduce((sum, item) => sum + item.valor, 0))}</strong>
-        </div>
+          <strong>{formatMoney(statusResumo.pagos)}</strong>
+          <small>{statusResumo.qtdPagos} item(ns)</small>
+        </article>
 
-        <div className="finops-mini-card">
+        <article>
           <Clock3 />
           <span>Aguardando pagamento</span>
-          <strong>{formatMoney(aguardando.reduce((sum, item) => sum + item.valor, 0))}</strong>
-        </div>
+          <strong>{formatMoney(statusResumo.aguardando)}</strong>
+          <small>{statusResumo.qtdAguardando} item(ns)</small>
+        </article>
 
-        <div className="finops-mini-card">
-          <Receipt />
+        <article>
+          <WalletCards />
           <span>Gerar NF</span>
-          <strong>{formatMoney(gerarNf.reduce((sum, item) => sum + item.valor, 0))}</strong>
-        </div>
+          <strong>{formatMoney(statusResumo.gerarNf)}</strong>
+          <small>{statusResumo.qtdGerarNf} item(ns)</small>
+        </article>
 
-        <div className="finops-mini-card">
+        <article>
           <AlertTriangle />
           <span>Confirmar info</span>
-          <strong>{formatMoney(confirmarInfo.reduce((sum, item) => sum + item.valor, 0))}</strong>
-        </div>
+          <strong>{formatMoney(statusResumo.confirmarInfo)}</strong>
+          <small>{statusResumo.qtdConfirmarInfo} item(ns)</small>
+        </article>
       </section>
 
-      <section className="finops-toolbar">
-        <div className="finops-tabs">
-          <button
-            type="button"
-            className={activeTab === "entradas" ? "active" : ""}
-            onClick={() => {
-              setActiveTab("entradas");
-              setStatusFilter("Todos");
-            }}
-          >
-            <Banknote size={16} />
-            Entradas
-          </button>
+      <section className="finance-tabs">
+        <button type="button" className={tab === "entradas" ? "active" : ""} onClick={() => setTab("entradas")}>
+          Entradas
+        </button>
 
-          <button
-            type="button"
-            className={activeTab === "saidas" ? "active" : ""}
-            onClick={() => {
-              setActiveTab("saidas");
-              setStatusFilter("Todos");
-            }}
-          >
-            <TrendingDown size={16} />
-            Saídas
-          </button>
+        <button type="button" className={tab === "saidas" ? "active" : ""} onClick={() => setTab("saidas")}>
+          Saídas
+        </button>
 
-          <button
-            type="button"
-            className={activeTab === "conferencia" ? "active" : ""}
-            onClick={() => {
-              setActiveTab("conferencia");
-              setStatusFilter("Todos");
-            }}
-          >
-            <CheckCircle2 size={16} />
-            Conferência
-          </button>
-        </div>
-
-        {activeTab !== "conferencia" && (
-          <div className="finops-filter-row">
-            <div className="finops-search">
-              <Search size={18} />
-              <input
-                placeholder={
-                  activeTab === "entradas"
-                    ? "Buscar projeto, grupo, marca, NF ou status..."
-                    : "Buscar fornecedor, descrição, categoria ou status..."
-                }
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-
-            <div className="finops-select">
-              <Filter size={18} />
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-              >
-                {availableStatuses.map((status) => (
-                  <option key={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+        <button type="button" className={tab === "conferencia" ? "active" : ""} onClick={() => setTab("conferencia")}>
+          Conferência
+        </button>
       </section>
 
-      {activeTab === "entradas" && (
-        <section className="finops-panel finops-table-panel">
-          <div className="finops-panel-header">
+      <section className="finance-filters">
+        <label>
+          <Search size={16} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar projeto, grupo, marca, NF ou status..."
+          />
+        </label>
+
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="todos">Todos</option>
+          {statusOptions.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      {tab === "entradas" && (
+        <section className="finance-table-panel">
+          <div className="finance-table-header">
             <div>
-              <p className="finops-overline">Entradas</p>
+              <p className="finance-overline">Entradas</p>
               <h2>Projetos faturados e pré-faturamento</h2>
             </div>
-            <strong>{formatMoney(filteredEntradaTotal)}</strong>
+
+            <strong>{formatMoney(filteredEntradas.reduce((sum, item) => sum + getNumber(item.valor), 0))}</strong>
           </div>
 
-          <div className="finops-table entradas">
-            <div className="finops-table-head">
-              <span>ID</span>
-              <span>Mês</span>
-              <span>Grupo</span>
-              <span>Marca</span>
-              <span>Projeto</span>
-              <span>Valor</span>
-              <span>Status</span>
-              <span>Emissão</span>
-              <span>Previsão</span>
-              <span>Dias</span>
-              <span>NF</span>
-              <span>Recebido</span>
-            </div>
+          <div className="finance-table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Mês</th>
+                  <th>Grupo</th>
+                  <th>Marca</th>
+                  <th>Projeto</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                  <th>Emissão</th>
+                  <th>Previsão</th>
+                  <th>NF</th>
+                  <th>Recebido</th>
+                </tr>
+              </thead>
 
-            {filteredEntradas.map((item, index) => (
-              <div className="finops-table-row" key={`${item.id}-${index}`}>
-                <span>{item.id ?? "—"}</span>
-                <span>{formatDate(item.mesRef)}</span>
-                <span>{item.grupo ?? "—"}</span>
-                <span>{item.marca ?? "—"}</span>
-                <span>{item.projeto ?? "—"}</span>
-                <span>{formatMoney(item.valor)}</span>
-                <span>
-                  <strong className={getEntradaStatusClass(item.status)}>
-                    {item.status ?? "—"}
-                  </strong>
-                </span>
-                <span>{formatDate(item.dataEmissao)}</span>
-                <span>{formatDate(item.previsaoRecebimento)}</span>
-                <span>{item.diasParaReceber ?? "—"}</span>
-                <span>{item.nf ?? "—"}</span>
-                <span>{item.recebido ?? "—"}</span>
-              </div>
-            ))}
-
-            {!filteredEntradas.length && (
-              <div className="finops-empty">Nenhuma entrada encontrada.</div>
-            )}
+              <tbody>
+                {filteredEntradas.map((item, index) => (
+                  <tr key={`${item.id}-${index}`}>
+                    <td>{item.id ?? "—"}</td>
+                    <td>{item.mesRef ?? "—"}</td>
+                    <td>{item.grupo ?? "—"}</td>
+                    <td>{item.marca ?? "—"}</td>
+                    <td>{item.projeto ?? "—"}</td>
+                    <td>{formatMoney(getNumber(item.valor))}</td>
+                    <td>
+                      <span className="finance-status-pill">{item.status ?? "—"}</span>
+                    </td>
+                    <td>{item.dataEmissao ?? "—"}</td>
+                    <td>{item.previsaoRecebimento ?? "—"}</td>
+                    <td>{item.nf ?? "—"}</td>
+                    <td>{item.recebido ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
 
-      {activeTab === "saidas" && (
-        <section className="finops-panel finops-table-panel">
-          <div className="finops-panel-header">
+      {tab === "saidas" && (
+        <section className="finance-table-panel">
+          <div className="finance-table-header">
             <div>
-              <p className="finops-overline">Saídas</p>
-              <h2>Custos, fornecedores e despesas</h2>
+              <p className="finance-overline">Saídas</p>
+              <h2>Custos e despesas importadas</h2>
             </div>
-            <strong>{formatMoney(filteredSaidaTotal)}</strong>
+
+            <strong>{formatMoney(filteredSaidas.reduce((sum, item) => sum + getSaidaValor(item), 0))}</strong>
           </div>
 
-          <div className="finops-table saidas">
-            <div className="finops-table-head">
-              <span>ID</span>
-              <span>Mês</span>
-              <span>Data</span>
-              <span>Categoria</span>
-              <span>Subcategoria</span>
-              <span>Fornecedor</span>
-              <span>Descrição</span>
-              <span>Valor</span>
-              <span>Status</span>
-              <span>Recorrência</span>
-              <span>Natureza</span>
-            </div>
-
+          <div className="finance-simple-list">
             {filteredSaidas.map((item, index) => (
-              <div className="finops-table-row" key={`${item.id}-${index}`}>
-                <span>{item.id ?? "—"}</span>
-                <span>{formatDate(item.mesRef)}</span>
-                <span>{formatDate(item.data)}</span>
-                <span>{item.categoriaPrincipal ?? "—"}</span>
-                <span>{item.subcategoria ?? "—"}</span>
-                <span>{item.fornecedor ?? "—"}</span>
-                <span>{item.descricao ?? "—"}</span>
-                <span>{formatMoney(item.valor)}</span>
-                <span>
-                  <strong className={getSaidaStatusClass(item.statusPagamento)}>
-                    {item.statusPagamento ?? "—"}
-                  </strong>
-                </span>
-                <span>{item.recorrencia ?? "—"}</span>
-                <span>{item.natureza ?? "—"}</span>
-              </div>
+              <article key={index}>
+                <div>
+                  <strong>{getSaidaDescricao(item)}</strong>
+                  <span>{JSON.stringify(item)}</span>
+                </div>
+
+                <b>{formatMoney(getSaidaValor(item))}</b>
+              </article>
             ))}
 
-            {!filteredSaidas.length && (
-              <div className="finops-empty">Nenhuma saída encontrada.</div>
-            )}
+            {!filteredSaidas.length && <div className="finance-empty">Nenhuma saída encontrada.</div>}
           </div>
         </section>
       )}
 
-      {activeTab === "conferencia" && (
-        <section className="finops-conference-grid">
-          <div className="finops-panel">
-            <div className="finops-panel-header">
-              <div>
-                <p className="finops-overline">Conferência</p>
-                <h2>Resumo financeiro</h2>
-              </div>
-              <CheckCircle2 />
-            </div>
-
-            <div className="finops-check-list">
-              <div>
-                <span>Faturado no ano</span>
-                <strong>{formatMoney(resumo?.totalFaturado ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Recebido no ano</span>
-                <strong>{formatMoney(resumo?.totalRecebido ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>A receber</span>
-                <strong>{formatMoney(resumo?.totalAReceber ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Pré-faturamento</span>
-                <strong>{formatMoney(resumo?.totalPreFaturamento ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Atrasado</span>
-                <strong>{formatMoney(resumo?.totalAtrasado ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Saídas no ano</span>
-                <strong>{formatMoney(resumo?.totalSaidas ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Lucro competência</span>
-                <strong>{formatMoney(resumo?.lucroCompetencia ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Resultado de caixa</span>
-                <strong>{formatMoney(resumo?.resultadoCaixa ?? 0)}</strong>
-              </div>
-
-              <div>
-                <span>Margem</span>
-                <strong>{formatPercent(resumo?.margemCompetencia ?? 0)}</strong>
-              </div>
+      {tab === "conferencia" && (
+        <section className="finance-table-panel">
+          <div className="finance-table-header">
+            <div>
+              <p className="finance-overline">Conferência</p>
+              <h2>Validação dos status da planilha</h2>
             </div>
           </div>
 
-          <div className="finops-panel">
-            <div className="finops-panel-header">
-              <div>
-                <p className="finops-overline">Status</p>
-                <h2>Contadores operacionais</h2>
-              </div>
-              <Receipt />
+          <div className="finance-conference-grid">
+            <div>
+              <span>Status encontrados</span>
+              <strong>{statusOptions.length}</strong>
+              <small>{statusOptions.join(", ") || "Nenhum status encontrado"}</small>
             </div>
 
-            <div className="finops-check-list">
-              <div>
-                <span>Entradas pagas</span>
-                <strong>{pagos.length}</strong>
-              </div>
-
-              <div>
-                <span>Aguardando pagamento</span>
-                <strong>{aguardando.length}</strong>
-              </div>
-
-              <div>
-                <span>Gerar NF</span>
-                <strong>{gerarNf.length}</strong>
-              </div>
-
-              <div>
-                <span>Confirmar info</span>
-                <strong>{confirmarInfo.length}</strong>
-              </div>
-
-              <div>
-                <span>Saídas pagas</span>
-                <strong>{saidasPagas.length}</strong>
-              </div>
-
-              <div>
-                <span>Saídas pendentes</span>
-                <strong>{saidasPendentes.length}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="finops-panel">
-            <div className="finops-panel-header">
-              <div>
-                <p className="finops-overline">Alertas</p>
-                <h2>Pontos para revisar</h2>
-              </div>
-              <XCircle />
+            <div>
+              <span>Pagos</span>
+              <strong>{formatMoney(statusResumo.pagos)}</strong>
+              <small>{statusResumo.qtdPagos} item(ns)</small>
             </div>
 
-            <div className="finops-alert-list">
-              <div>
-                <AlertTriangle />
-                <span>Conferir itens com status “Confirmar info”.</span>
-              </div>
+            <div>
+              <span>Aguardando</span>
+              <strong>{formatMoney(statusResumo.aguardando)}</strong>
+              <small>{statusResumo.qtdAguardando} item(ns)</small>
+            </div>
 
-              <div>
-                <Receipt />
-                <span>Verificar projetos em “Gerar NF” antes de contar como recebimento.</span>
-              </div>
-
-              <div>
-                <Clock3 />
-                <span>A receber deve considerar “Aguardando pagamento” e “Atrasado”.</span>
-              </div>
-
-              <div>
-                <CheckCircle2 />
-                <span>Reimporte a planilha sempre que houver alteração no Google Sheets.</span>
-              </div>
+            <div>
+              <span>NF / Info</span>
+              <strong>{formatMoney(statusResumo.gerarNf + statusResumo.confirmarInfo)}</strong>
+              <small>{statusResumo.qtdGerarNf + statusResumo.qtdConfirmarInfo} item(ns)</small>
             </div>
           </div>
         </section>
@@ -792,3 +643,4 @@ export function Financeiro() {
     </div>
   );
 }
+

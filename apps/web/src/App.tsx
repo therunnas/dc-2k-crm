@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+﻿import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./layouts/AppLayout";
 import { Dashboard } from "./pages/Dashboard";
 import { Producoes } from "./pages/Producoes";
@@ -14,6 +14,7 @@ export default function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/producoes" element={<Producoes />} />
         <Route path="/financeiro" element={<Financeiro />} />
         <Route path="/clientes" element={<Clientes />} />
@@ -21,6 +22,8 @@ export default function App() {
         <Route path="/discord" element={<Discord />} />
         <Route path="/obsidian" element={<Obsidian />} />
         <Route path="/automacoes" element={<Automacoes />} />
+
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );
