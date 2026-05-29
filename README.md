@@ -1,15 +1,137 @@
-# 2K Command OS — Internal CRM & Operations Dashboard
+# DC 2K CRM Legacy — 2K Command OS Prototype
 
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-8b5cf6)
+![Status](https://img.shields.io/badge/status-legado%20%2F%20prot%C3%B3tipo-8b5cf6)
 ![React](https://img.shields.io/badge/React-19-22d3ee)
 ![Vite](https://img.shields.io/badge/Vite-frontend-646cff)
 ![TypeScript](https://img.shields.io/badge/TypeScript-app-3178c6)
 ![Node.js](https://img.shields.io/badge/Node.js-backend-4ade80)
 ![Express](https://img.shields.io/badge/Express-API-111827)
 
-Painel operacional local da **2K Studios** para centralizar financeiro, produções, clientes, agenda, automações, Obsidian e Discord Bot.
+> **Status:** projeto legado / protótipo local.
+>
+> Este repositório representa uma versão antiga/local/teste do **2K Command OS / DC 2K CRM**.
+> Ele foi preservado como referência visual, histórica e operacional.
+>
+> O projeto SaaS atual e principal está separado no repositório **`therunnas/2k-web-saas`**.
 
-O sistema roda localmente com **backend Node.js/Express**, **frontend React/Vite** e executores para **Windows** e **macOS**.
+---
+
+## O que é este projeto
+
+O **DC 2K CRM Legacy** é um painel operacional local da **2K Studios** criado para centralizar, em uma versão experimental, áreas como:
+
+- dashboard financeiro;
+- produções;
+- clientes;
+- agenda;
+- automações;
+- Obsidian;
+- Discord Bot;
+- importação de planilhas;
+- executores locais para Windows e macOS.
+
+Ele roda localmente com:
+
+- frontend **React/Vite/TypeScript**;
+- backend **Node.js/Express/TypeScript**;
+- leitura de planilhas com `xlsx`;
+- módulos visuais de dashboard e operação interna.
+
+Este projeto **não representa a arquitetura final do SaaS**. Ele deve ser usado como referência de UI, histórico e base de consulta.
+
+---
+
+## Relação com o 2K Web SaaS
+
+A separação correta é:
+
+```txt
+therunnas/dc-2k-crm     = projeto legado / protótipo / referência visual
+therunnas/2k-web-saas   = SaaS atual / projeto principal
+```
+
+Não copie este projeto inteiro para dentro do `2k-web-saas`.
+
+O que pode ser aproveitado como referência:
+
+- visual dark;
+- composição da sidebar;
+- cards financeiros;
+- gráficos;
+- organização dos módulos;
+- linguagem visual do 2K Command OS;
+- ideias de fluxo financeiro e operacional.
+
+O que não deve ser migrado automaticamente:
+
+- estrutura inteira do projeto;
+- executores locais;
+- arquivos de ambiente;
+- dados locais;
+- dependências sem revisão;
+- integrações antigas;
+- qualquer código sem adaptação ao SaaS novo.
+
+---
+
+## Stack identificada
+
+### Frontend
+
+Local:
+
+```txt
+apps/web
+```
+
+Principais tecnologias:
+
+- React 19;
+- Vite;
+- TypeScript;
+- React Router DOM;
+- Recharts;
+- Framer Motion;
+- Zustand;
+- Lucide React;
+- Axios.
+
+Scripts principais:
+
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run preview
+```
+
+### Backend
+
+Local:
+
+```txt
+apps/server
+```
+
+Principais tecnologias:
+
+- Node.js;
+- Express;
+- TypeScript;
+- tsx;
+- multer;
+- xlsx;
+- dotenv;
+- cors;
+- discord.js.
+
+Scripts principais:
+
+```bash
+npm run dev
+npm run build
+npm run start
+```
 
 ---
 
@@ -17,9 +139,10 @@ O sistema roda localmente com **backend Node.js/Express**, **frontend React/Vite
 
 Antes de usar, instale:
 
-- Git
-- Node.js LTS
-- Navegador atualizado
+- Git;
+- Node.js LTS;
+- npm;
+- navegador atualizado.
 
 Teste no terminal:
 
@@ -31,187 +154,16 @@ git --version
 
 ---
 
-## Instalação no Windows
-
-Clone o projeto:
-
-```powershell
-cd "$env:USERPROFILE\Documents\GitHub"
-git clone https://github.com/therunnas/dc-2k-crm.git
-cd dc-2k-crm
-```
-
-Abra o executor visual:
-
-```txt
-2K Command OS.vbs
-```
-
-No primeiro uso:
-
-1. Confirme a pasta do projeto.
-2. Configure o `.env` / Discord Bot.
-3. Clique em **Salvar configuração**.
-4. Clique em **Instalar dependências**.
-5. Clique em **Abrir App Completo**.
-
-Uso diário:
-
-```txt
-Abrir 2K Command OS.vbs
-Clicar em Abrir App Completo
-```
-
-Para criar atalho na Área de Trabalho/Menu Iniciar:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\launchers\windows\instalar-atalho-windows.ps1"
-```
-
----
-
-## Instalação no macOS
+## Como rodar localmente
 
 Clone o projeto:
 
 ```bash
-mkdir -p ~/Documents/GitHub
-cd ~/Documents/GitHub
 git clone https://github.com/therunnas/dc-2k-crm.git
 cd dc-2k-crm
 ```
 
-Libere os executores:
-
-```bash
-chmod +x "launchers/mac/criar-app-mac.command"
-chmod +x "launchers/mac/instalar-atalho-mac.command"
-```
-
-Crie o app local:
-
-```bash
-./launchers/mac/criar-app-mac.command
-```
-
-Instale na Mesa:
-
-```bash
-./launchers/mac/instalar-atalho-mac.command
-```
-
-Abra:
-
-```txt
-2K Command OS.app
-```
-
-No primeiro uso:
-
-1. Selecione a pasta do projeto.
-2. Configure o `.env` / Discord Bot.
-3. Instale as dependências.
-4. Clique em **Abrir App Completo**.
-
-Uso diário:
-
-```txt
-Abrir 2K Command OS.app
-Clicar em Abrir App Completo
-```
-
----
-
-## Configuração do Discord Bot
-
-O `.env` fica em:
-
-```txt
-apps/server/.env
-```
-
-Modelo:
-
-```env
-PORT=3333
-
-DISCORD_BOT_ENABLED=true
-DISCORD_BOT_TOKEN=SEU_TOKEN_DO_BOT
-DISCORD_GUILD_ID=ID_DO_SERVIDOR
-DISCORD_ALERT_CHANNEL_ID=ID_DO_CANAL_PADRAO
-```
-
-O bot fica online enquanto o backend estiver rodando.
-
-```txt
-Backend ligado = bot online
-Backend fechado = bot offline
-```
-
-Para deixar o bot 24/7, será necessário hospedar o backend em servidor/cloud.
-
----
-
-## URLs locais
-
-```txt
-Dashboard: http://localhost:5173/dashboard
-Frontend:  http://localhost:5173
-Backend:   http://localhost:3333
-Health:    http://localhost:3333/health
-```
-
----
-
-## Módulos
-
-- **Dashboard** — visão executiva do fluxo.
-- **Financeiro** — importação da planilha e controle de entradas/saídas.
-- **Produções** — projetos importados da planilha.
-- **Clientes** — grupos, marcas e faturamento por cliente.
-- **Agenda** — prazos e próximos recebimentos.
-- **Automações** — ações sugeridas e alertas operacionais.
-- **Obsidian** — apoio à documentação interna.
-- **Discord** — status do bot e envio de mensagens por canal.
-
----
-
-## Importar planilha
-
-Com o sistema aberto:
-
-1. Acesse `/financeiro`.
-2. Clique em **Selecionar planilha**.
-3. Importe o arquivo `.xlsx`.
-4. Confira os dados no Dashboard.
-
----
-
-## Estrutura principal
-
-```txt
-dc-2k-crm/
-├── 2K Command OS.vbs
-├── apps/
-│   ├── server/
-│   └── web/
-├── launchers/
-│   ├── windows/
-│   │   ├── 2K Command OS.hta
-│   │   └── instalar-atalho-windows.ps1
-│   └── mac/
-│       ├── 2K Command OS.applescript
-│       ├── criar-app-mac.command
-│       └── instalar-atalho-mac.command
-├── README.md
-└── .gitignore
-```
-
----
-
-## Rodar manualmente
-
-Backend:
+### Backend
 
 ```bash
 cd apps/server
@@ -219,7 +171,15 @@ npm install
 npm run dev
 ```
 
-Frontend:
+Backend típico:
+
+```txt
+http://localhost:3333
+```
+
+### Frontend
+
+Em outro terminal:
 
 ```bash
 cd apps/web
@@ -227,28 +187,65 @@ npm install
 npm run dev
 ```
 
----
-
-## Atualizar projeto
-
-Pelo executor:
+Frontend típico:
 
 ```txt
-Atualizar projeto
+http://localhost:5173
 ```
 
-Manual:
+---
 
-```bash
-git pull origin main
+## URLs locais
 
-cd apps/server
-npm install
-npm run build
+```txt
+Frontend:  http://localhost:5173
+Dashboard: http://localhost:5173/dashboard
+Backend:   http://localhost:3333
+Health:    http://localhost:3333/health
+```
 
-cd ../web
-npm install
-npm run build
+---
+
+## Módulos do protótipo
+
+- **Dashboard** — visão executiva do fluxo financeiro e operacional.
+- **Financeiro** — importação de planilha e controle de entradas/saídas.
+- **Produções** — projetos e operações audiovisuais.
+- **Clientes** — grupos, marcas e faturamento por cliente.
+- **Agenda** — prazos, próximos recebimentos e operação.
+- **Automações** — ações sugeridas e alertas operacionais.
+- **Obsidian** — apoio à documentação interna.
+- **Discord** — status/integração local experimental com bot.
+
+> Alguns módulos podem ser protótipos, mockups ou integrações locais. Validar no código antes de migrar qualquer parte para o SaaS novo.
+
+---
+
+## Importar planilha
+
+Fluxo previsto no protótipo:
+
+1. abrir o sistema local;
+2. acessar `/financeiro`;
+3. selecionar uma planilha `.xlsx`;
+4. importar os dados;
+5. conferir os indicadores no dashboard.
+
+---
+
+## Estrutura principal
+
+```txt
+dc-2k-crm/
+├── apps/
+│   ├── server/
+│   └── web/
+├── launchers/
+│   ├── windows/
+│   └── mac/
+├── README.md
+├── LEGACY_NOTICE.md
+└── .gitignore
 ```
 
 ---
@@ -258,28 +255,39 @@ npm run build
 Nunca envie para o GitHub:
 
 ```txt
+.env
+.env.*
 apps/server/.env
 apps/server/data/
 node_modules/
 dist/
+build/
+.vite/
 obsidian-vault/
 ```
 
-Esses arquivos são locais e protegidos pelo `.gitignore`.
+Esses itens devem permanecer locais e ignorados pelo `.gitignore`.
 
 ---
 
-## Status
+## Documentação relacionada
+
+- `LEGACY_NOTICE.md` — aviso formal de projeto legado.
+- `docs/PROJECT_CONTEXT.md` — contexto técnico e relação com o SaaS novo, quando disponível.
+
+---
+
+## Status atual
 
 ```txt
-Dashboard: concluído
-Financeiro: concluído
-Produções: concluído
-Clientes: concluído
-Agenda: concluído
-Automações: concluído
-Obsidian: concluído
-Discord Bot: concluído
-Executor Windows: concluído
-Executor macOS: preparado para teste
+Tipo: projeto legado / protótipo local
+Uso principal: referência visual e histórica
+Projeto principal atual: therunnas/2k-web-saas
+Migração automática: não recomendada
 ```
+
+---
+
+## Licença
+
+Uso interno/experimental da 2K Studios. Ajustar licença formal antes de uso público amplo.
